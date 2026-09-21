@@ -1,0 +1,71 @@
+"use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { ArrowDownToLine, ArrowUpRight, Check, CircleHelp, FileDown, FilePlus2, FileText, LoaderCircle, LockKeyhole, RotateCcw } from "lucide-react";
+import { calculateInvoice, exampleInvoice, formatMoney, invoiceSchema, newInvoice, type Invoice } from "@/lib/invoice";
+import { readPreferences, savePreferences } from "@/lib/storage";
+import { FormulaireFacture } from "./FormulaireFacture";
+import { ApercuFacture } from "./ApercuFacture";
+
+export function AtelierFacture() {
+  const [invoice, setInvoice] = useState<Invoice>(() => ({ ...newInvoice(), date: "" }));
+  const [ready, setReady] = useState(false), [busy, setBusy] = useState<"pdf" | "word" | null>(null);
+  const [message, setMessage] = useState(""), [error, setError] = useState(""), [storageWarning, setStorageWarning] = useState(false);
+  useEffect(() => {
+    try {
+      const saved = readPreferences();
+      // Initialisation après hydratation : localStorage n’existe pas côté serveur.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setInvoice(newInvoice(saved.dernierNumero ? Math.min(saved.dernierNumero + 1, 999999999) : 1, saved.client));
+    } catch { setStorageWarning(true); }
+    setReady(true);
+  }, []);
+  useEffect(() => {
+    if (!ready) return;
+    const timer = setTimeout(() => {
+      try { savePreferences({ client: { destinataire: invoice.destinataire, reference: invoice.reference } }); }
+      catch { setStorageWarning(true); }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [ready, invoice.destinataire, invoice.reference]);
+  function update(patch: Partial<Invoice>) { setInvoice(i => ({ ...i, ...patch })); setMessage(""); setError(""); }
+  async function download(format: "pdf" | "word") {
+    if (busy) return;
+    setError(""); setMessage("");
+    const form = document.getElementById("invoice-form") as HTMLFormElement;
+    if (!form.reportValidity()) return;
+    const parsed = invoiceSchema.safeParse(invoice);
+    if (!parsed.success) { setError(`Vérifiez la facture : ${parsed.error.issues.map(i => i.message).join(" ")}`); return; }
+    setBusy(format);
+    try {
+      const response = await fetch(`/api/factures/${format}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(parsed.data), signal: AbortSignal.timeout(65000) });
+      if (!response.ok) { const body = await response.json().catch(() => ({})); throw new Error(body.error || "Le téléchargement a échoué. Réessayez."); }
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a"); link.href = url; link.download = `Facture-EXNOV-${invoice.numero}.${format === "pdf" ? "pdf" : "docx"}`; document.body.append(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      try { savePreferences({ dernierNumero: invoice.numero, client: { destinataire: invoice.destinataire, reference: invoice.reference } }); } catch { setStorageWarning(true); }
+      setMessage(`Facture nº ${invoice.numero} téléchargée en ${format === "pdf" ? "PDF" : "Word"}.`);
+    } catch (e) { setError(e instanceof Error && e.name === "TimeoutError" ? "La génération prend trop de temps. Veuillez réessayer." : e instanceof Error ? e.message : "Le téléchargement a échoué."); }
+    finally { setBusy(null); }
+  }
+  function startNew() {
+    let last = invoice.numero;
+    try { last = Math.max(last, readPreferences().dernierNumero ?? 0); } catch { setStorageWarning(true); }
+    setInvoice(newInvoice(Math.min(last + 1, 999999999), { destinataire: invoice.destinataire, reference: invoice.reference })); setMessage(""); setError("");
+  }
+  const totals = calculateInvoice(invoice);
+  return <div className="app-shell">
+    <header className="app-header"><div className="header-inner"><Link href="/" className="brand-lockup" aria-label="EXNOV — Accueil"><span className="brand-symbol">E<span>⌁</span></span><span className="brand-word">EXNOV<small>BUREAU D’ÉTUDES</small></span></Link><div className="header-divider"/><span className="header-label">Espace facturation</span><div className="ml-auto flex items-center gap-5"><span className="company-location">Tanger, Maroc</span><span className="avatar">EX</span></div></div></header>
+    <main className="workspace"><div className="breadcrumb">Espace de travail <span>/</span> <strong>Factures</strong></div>
+      <div className="page-heading"><div><div className="eyebrow"><span/> SIMPLE. PRÉCIS. PROFESSIONNEL.</div><h1>Votre prochaine facture,<br className="sm:hidden"/> en quelques instants.</h1><p>Renseignez vos prestations. Votre document prend forme.</p></div><button className="secondary-button new-invoice" type="button" disabled={!ready || !!busy} onClick={startNew}><FilePlus2 size={17}/> Nouvelle facture</button></div>
+      <div className="workspace-grid"><div className="form-column"><div className="form-intro"><span className="text-xs font-semibold tracking-widest text-slate-500">VOTRE FACTURE</span><button type="button" className="example-button" disabled={!ready || !!busy} onClick={() => { setInvoice(exampleInvoice()); setMessage("Exemple du modèle chargé. Vous pouvez modifier tous les champs."); setError(""); }}><RotateCcw size={13}/> Charger l’exemple</button></div><FormulaireFacture invoice={invoice} update={update} busy={!!busy || !ready}/><div className="privacy-note"><LockKeyhole size={15}/><p>Seuls le dernier numéro utilisé et les informations du client sont conservés dans ce navigateur.</p></div></div>
+      <div className="document-column"><div className="document-sticky"><div className="totals-strip"><div><span>Total HT</span><strong>{formatMoney(totals.totalHT)}<small> DH</small></strong></div><div><span>Total TTC</span><strong>{formatMoney(totals.ttc)}<small> DH</small></strong></div><div className="payable"><span>Total à payer</span><strong>{formatMoney(totals.totalAPayer)}<small> DH</small></strong></div></div>
+        <ApercuFacture invoice={invoice}/>
+        <div className="export-panel"><div className="mb-4 flex items-center justify-between"><div><h2>Prête à être envoyée.</h2><p>Choisissez le format de votre facture.</p></div><ArrowDownToLine size={22} className="text-slate-400"/></div><div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><button type="button" className="primary-button" disabled={!ready || !!busy} onClick={() => download("pdf")}>{busy === "pdf" ? <LoaderCircle size={18} className="animate-spin"/> : <FileDown size={18}/>} {busy === "pdf" ? "Génération du PDF…" : "Télécharger PDF"}</button><button type="button" className="secondary-button" disabled={!ready || !!busy} onClick={() => download("word")}>{busy === "word" ? <LoaderCircle size={18} className="animate-spin"/> : <FileText size={18}/>} {busy === "word" ? "Génération du Word…" : "Télécharger Word"}</button></div>
+          <div aria-live="polite">{message && <p className="status-message"><Check size={15}/>{message}</p>}</div>{error && <p role="alert" className="error-message">{error}</p>}{storageWarning && <p className="mt-3 text-xs text-amber-800">Le stockage de ce navigateur est indisponible. Le numéro et le client ne seront pas mémorisés.</p>}
+        </div><p className="help-note"><CircleHelp size={14}/> Les retenues cochées sont déduites du total à payer.</p>
+      </div></div></div>
+      <footer className="app-footer"><span>BET EXNOV S.A.R.L <span className="text-slate-300">/</span> Expertise & Innovation</span><a href="https://www.exnov.ma" target="_blank" rel="noreferrer">exnov.ma <ArrowUpRight size={13}/></a></footer>
+    </main>
+  </div>;
+}
