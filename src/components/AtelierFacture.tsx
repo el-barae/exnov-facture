@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowDownToLine, ArrowUpRight, Check, CircleHelp, FileDown, FilePlus2, FileText, LoaderCircle, LockKeyhole, RotateCcw } from "lucide-react";
-import { calculateInvoice, exampleInvoice, formatMoney, invoiceSchema, newInvoice, type Invoice } from "@/lib/invoice";
+import { exampleInvoice, invoiceSchema, newInvoice, type Invoice } from "@/lib/invoice";
 import { readPreferences, savePreferences } from "@/lib/storage";
 import { FormulaireFacture } from "./FormulaireFacture";
 import { ApercuFacture } from "./ApercuFacture";
@@ -53,13 +53,25 @@ export function AtelierFacture() {
     try { last = Math.max(last, readPreferences().dernierNumero ?? 0); } catch { setStorageWarning(true); }
     setInvoice(newInvoice(Math.min(last + 1, 999999999), { destinataire: invoice.destinataire, reference: invoice.reference })); setMessage(""); setError("");
   }
-  const totals = calculateInvoice(invoice);
   return <div className="app-shell">
-    <header className="app-header"><div className="header-inner"><Link href="/" className="brand-lockup" aria-label="EXNOV — Accueil"><span className="brand-symbol">E<span>⌁</span></span><span className="brand-word">EXNOV<small>BUREAU D’ÉTUDES</small></span></Link><div className="header-divider"/><span className="header-label">Espace facturation</span><div className="ml-auto flex items-center gap-5"><span className="company-location">Tanger, Maroc</span><span className="avatar">EX</span></div></div></header>
-    <main className="workspace"><div className="breadcrumb">Espace de travail <span>/</span> <strong>Factures</strong></div>
-      <div className="page-heading"><div><div className="eyebrow"><span/> SIMPLE. PRÉCIS. PROFESSIONNEL.</div><h1>Votre prochaine facture,<br className="sm:hidden"/> en quelques instants.</h1><p>Renseignez vos prestations. Votre document prend forme.</p></div><button className="secondary-button new-invoice" type="button" disabled={!ready || !!busy} onClick={startNew}><FilePlus2 size={17}/> Nouvelle facture</button></div>
+    <header className="app-header">
+      <div className="header-inner">
+        <Link href="/" className="brand-lockup" aria-label="EXNOV — Accueil">
+          <span className="brand-symbol">E<span>⌁</span></span>
+          <span className="brand-word">EXNOV<small>BUREAU D’ÉTUDES</small></span>
+        </Link>
+        <div className="header-divider"/>
+        <span className="header-label">Espace facturation</span>
+        <div className="ml-auto flex items-center gap-5">
+          <span className="company-location">Tanger, Maroc</span>
+          <span className="avatar">EX</span>
+        </div>
+      </div>
+    </header>
+    <main className="workspace">
+      <header className="page-heading"><h1>Votre prochaine facture, en quelques instants.</h1><button className="secondary-button new-invoice" type="button" disabled={!ready || !!busy} onClick={startNew}><FilePlus2 size={17}/> Nouvelle facture</button></header>
       <div className="workspace-grid"><div className="form-column"><div className="form-intro"><span className="text-xs font-semibold tracking-widest text-slate-500">VOTRE FACTURE</span><button type="button" className="example-button" disabled={!ready || !!busy} onClick={() => { setInvoice(exampleInvoice()); setMessage("Exemple du modèle chargé. Vous pouvez modifier tous les champs."); setError(""); }}><RotateCcw size={13}/> Charger l’exemple</button></div><FormulaireFacture invoice={invoice} update={update} busy={!!busy || !ready}/><div className="privacy-note"><LockKeyhole size={15}/><p>Seuls le dernier numéro utilisé et les informations du client sont conservés dans ce navigateur.</p></div></div>
-      <div className="document-column"><div className="document-sticky"><div className="totals-strip"><div><span>Total HT</span><strong>{formatMoney(totals.totalHT)}<small> DH</small></strong></div><div><span>Total TTC</span><strong>{formatMoney(totals.ttc)}<small> DH</small></strong></div><div className="payable"><span>Total à payer</span><strong>{formatMoney(totals.totalAPayer)}<small> DH</small></strong></div></div>
+      <div className="document-column"><div className="document-sticky">
         <ApercuFacture invoice={invoice}/>
         <div className="export-panel"><div className="mb-4 flex items-center justify-between"><div><h2>Prête à être envoyée.</h2><p>Choisissez le format de votre facture.</p></div><ArrowDownToLine size={22} className="text-slate-400"/></div><div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><button type="button" className="primary-button" disabled={!ready || !!busy} onClick={() => download("pdf")}>{busy === "pdf" ? <LoaderCircle size={18} className="animate-spin"/> : <FileDown size={18}/>} {busy === "pdf" ? "Génération du PDF…" : "Télécharger PDF"}</button><button type="button" className="secondary-button" disabled={!ready || !!busy} onClick={() => download("word")}>{busy === "word" ? <LoaderCircle size={18} className="animate-spin"/> : <FileText size={18}/>} {busy === "word" ? "Génération du Word…" : "Télécharger Word"}</button></div>
           <div aria-live="polite">{message && <p className="status-message"><Check size={15}/>{message}</p>}</div>{error && <p role="alert" className="error-message">{error}</p>}{storageWarning && <p className="mt-3 text-xs text-amber-800">Le stockage de ce navigateur est indisponible. Le numéro et le client ne seront pas mémorisés.</p>}
