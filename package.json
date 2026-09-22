@@ -13,7 +13,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test tests/*.test.ts",
-    "test:e2e": "node --import tsx scripts/verify-exports.ts"
+    "test:e2e": "node --import tsx scripts/verify-exports.ts",
+    "test:reports": "node --import tsx scripts/verify-reports.ts"
   },
   "dependencies": {
     "@sparticuz/chromium": "153.0.0",

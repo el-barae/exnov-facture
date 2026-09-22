@@ -1,6 +1,8 @@
-# EXNOV — Espace facturation
+# EXNOV — Factures, devis et rapports IA
 
 Application de génération de **factures et devis** avec Next.js 16 (App Router), TypeScript et Tailwind CSS. Formulaire en français, aperçu A4 paginé en direct, exports PDF et Word, sans compte ni base de données.
+
+L’espace **Rapports IA**, accessible depuis le header, ajoute un chat avec photos, la rédaction et les révisions via **Kimi K3 sur AWS Bedrock**, un aperçu EXNOV paginé et l’export PDF. Voir [le guide de configuration et d’utilisation](docs/rapports-ia.md). Les variables à remplir sont dans `.env.example` ; la facturation fonctionne indépendamment de Bedrock.
 
 ## Démarrage
 
@@ -70,7 +72,7 @@ Les polices libres **Carlito** et **Noto Sans** sont livrées avec leurs licence
 1. Créer un dépôt GitHub et y pousser les sources, **`package-lock.json`, `public/` et `templates/facture-exnov.docx` inclus**. Ne pas pousser `node_modules/`, `.next/` ni `.env.local`.
 2. Dans Vercel, choisir **Add New → Project**, importer le dépôt et laisser le preset **Next.js**.
 3. Utiliser **Node.js 22.x**. Commande de build : `npm run build` ; répertoire de sortie : valeur Next.js par défaut.
-4. Déployer. Aucune base de données, clé API, variable secrète, couche Lambda ou configuration de serveur n’est nécessaire. Ne pas définir `CHROME_EXECUTABLE_PATH` sur Vercel.
+4. Déployer. La facturation ne nécessite aucune clé API ni base de données. Pour les rapports IA, configurer les variables AWS décrites dans [le guide](docs/rapports-ia.md) et protéger l’accès au déploiement. Ne pas définir `CHROME_EXECUTABLE_PATH` sur Vercel.
 5. Charger l’exemple, télécharger les deux formats et vérifier vos mentions de société.
 
 Les routes tournent dans le runtime Node.js (pas Edge), avec une durée maximale déclarée de 60 s pour le PDF et 30 s pour Word. `next.config.ts` conserve Chromium hors du bundle et inclut explicitement son binaire, les polices, les images et le modèle dans les fonctions concernées. Ne pas configurer `output: "export"` : les exports nécessitent les fonctions serveur Next.js.

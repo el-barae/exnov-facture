@@ -4,6 +4,7 @@ const config: NextConfig = {
   serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
   outputFileTracingIncludes: {
     "/api/factures/pdf": ["./node_modules/@sparticuz/chromium/bin/**", "./public/fonts/**", "./public/*exnov*"],
+    "/api/rapports/pdf": ["./node_modules/@sparticuz/chromium/bin/**", "./public/fonts/**", "./public/*exnov*"],
     "/api/factures/word": ["./templates/facture-exnov.docx", "./public/*exnov*"],
   },
   poweredByHeader: false,

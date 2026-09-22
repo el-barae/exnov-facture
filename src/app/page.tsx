@@ -1,2 +1,2 @@
-import { AtelierFacture } from "@/components/AtelierFacture";
-export default function Home() { return <AtelierFacture/>; }
+import { EspaceExnov } from "@/components/EspaceExnov";
+export default function Home() { return <EspaceExnov/>; }

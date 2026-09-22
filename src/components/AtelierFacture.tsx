@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { ArrowDownToLine, ArrowUpRight, Check, CircleHelp, FileDown, FilePlus2, FileText, LoaderCircle, LockKeyhole, RotateCcw } from "lucide-react";
 import { documentFilename, documentLabels, exampleInvoice, invoiceSchema, newInvoice, type DocumentType, type Invoice } from "@/lib/invoice";
 import { lastDocumentNumber, numberPreference, readPreferences, savePreferences } from "@/lib/storage";
@@ -67,20 +66,6 @@ export function AtelierFacture() {
     setInvoice(newInvoice(Math.min(last + 1, 999999999), { destinataire: invoice.destinataire, reference: invoice.reference }, invoice.typeDocument)); setMessage(""); setError("");
   }
   return <div className="app-shell">
-    <header className="app-header">
-      <div className="header-inner">
-        <Link href="/" className="brand-lockup" aria-label="EXNOV — Accueil">
-          <span className="brand-symbol">E<span>⌁</span></span>
-          <span className="brand-word">EXNOV<small>BUREAU D’ÉTUDES</small></span>
-        </Link>
-        <div className="header-divider"/>
-        <span className="header-label">Espace facturation</span>
-        <div className="ml-auto flex items-center gap-5">
-          <span className="company-location">Tanger, Maroc</span>
-          <span className="avatar">EX</span>
-        </div>
-      </div>
-    </header>
     <main className="workspace">
       <header className="page-heading"><h1>{isDevis ? "Votre prochain devis, en quelques instants." : "Votre prochaine facture, en quelques instants."}</h1><button className="secondary-button new-invoice" type="button" disabled={!ready || !!busy} onClick={startNew}><FilePlus2 size={17}/> {isDevis ? "Nouveau devis" : "Nouvelle facture"}</button></header>
       <div className="workspace-grid"><div className="form-column"><div className="form-intro"><span className="text-xs font-semibold tracking-widest text-slate-500">{isDevis ? "VOTRE DEVIS" : "VOTRE FACTURE"}</span><button type="button" className="example-button" disabled={!ready || !!busy} onClick={() => { setInvoice({ ...exampleInvoice(), typeDocument: invoice.typeDocument, numero: isDevis ? invoice.numero : 13 }); setMessage("Exemple du modèle chargé. Vous pouvez modifier tous les champs."); setError(""); }}><RotateCcw size={13}/> Charger l’exemple</button></div><FormulaireFacture invoice={invoice} update={update} busy={!!busy || !ready}/><div className="privacy-note"><LockKeyhole size={15}/><p>Seuls les derniers numéros de facture et de devis et les informations du client sont conservés dans ce navigateur.</p></div></div>

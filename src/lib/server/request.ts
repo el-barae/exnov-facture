@@ -1,5 +1,10 @@
 import { documentFilename, invoiceSchema, type DocumentType } from "../invoice";
 export async function parseInvoiceRequest(request: Request) {
+  const result = invoiceSchema.safeParse(await parseJsonRequest(request, 500000));
+  if (!result.success) throw new RequestError(result.error.issues.map(i => `${i.path.join(".")} : ${i.message}`).join("\n"), 400);
+  return result.data;
+}
+export async function parseJsonRequest(request: Request, maxBytes: number): Promise<unknown> {
   if (!request.headers.get("content-type")?.includes("application/json")) throw new RequestError("Envoyez des données JSON.", 415);
   const reader = request.body?.getReader();
   if (!reader) throw new RequestError("Le document est vide.", 400);
@@ -10,16 +15,12 @@ export async function parseInvoiceRequest(request: Request) {
       const { value, done } = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > 500000) { await reader.cancel(); throw new RequestError("Le document est trop volumineux.", 413); }
+      if (size > maxBytes) { await reader.cancel(); throw new RequestError("Le document est trop volumineux.", 413); }
       text += decoder.decode(value, { stream: true });
     }
     text += decoder.decode();
   } finally { reader.releaseLock(); }
-  let json: unknown;
-  try { json = JSON.parse(text); } catch { throw new RequestError("Les données JSON sont invalides.", 400); }
-  const result = invoiceSchema.safeParse(json);
-  if (!result.success) throw new RequestError(result.error.issues.map(i => `${i.path.join(".")} : ${i.message}`).join("\n"), 400);
-  return result.data;
+  try { return JSON.parse(text); } catch { throw new RequestError("Les données JSON sont invalides.", 400); }
 }
 export class RequestError extends Error {
   constructor(message: string, public status = 400) { super(message); }
