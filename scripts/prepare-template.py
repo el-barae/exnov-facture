@@ -103,7 +103,7 @@ tr=w('tr');trpr=w('trPr');trpr.append(w('trHeight',val=2290,hRule='atLeast'));tr
 for i in range(2):
     tc=w('tc');tcpr=w('tcPr');tcpr.append(w('tcW',w=5667 if i==0 else 5016,type='dxa'));tc.append(tcpr)
     if i==0:
-        tc.append(paragraph('FACTURE Nº {numero}',font='Noto Sans',bold=True))
+        tc.append(paragraph('{titreDocument} Nº {numero}',font='Noto Sans',bold=True))
         date=paragraph('DATE ',font='Noto Sans',bold=True)
         date.append(paragraph('{date}',font='Noto Sans').find('w:r',NS));tc.append(date)
     else:
@@ -112,7 +112,7 @@ for i in range(2):
 meta.append(tr);body.append(meta)
 gap=paragraph('',size=2);body.append(gap)
 body.append(table)
-for text,before,after in [('Arrêté la présente facture à la somme de :',230,100),('{montantEnLettres}.',0,0)]:
+for text,before,after in [('{formuleArrete}',230,100),('{montantEnLettres}.',0,0)]:
     p=paragraph(text,font='Noto Sans',before=before,after=after)
     p.find('w:pPr',NS).append(w('keepNext'));body.append(p)
 # Tableau de clôture : remerciement à gauche, simple texte Signature à droite.

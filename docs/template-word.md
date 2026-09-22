@@ -8,19 +8,21 @@ Activez **Accueil → ¶** pour voir les paragraphes, puis **Disposition du tabl
 
 | Emplacement | Texte à saisir dans Word |
 | --- | --- |
-| Numéro, en haut à gauche | `FACTURE Nº {numero}` |
+| Numéro, en haut à gauche | `{titreDocument} Nº {numero}` |
 | Date, juste en dessous | `DATE {date}` |
 | Sous le mot POUR | `{destinataire}` |
 | Référence client | `{#reference}` dans un paragraphe seul, puis `REFERENCE: {reference}`, puis `{/reference}` dans un paragraphe seul |
 | Première ligne fusionnée du tableau | `{projet}` |
-| Paragraphe sous les totaux | `Arrêté la présente facture à la somme de :` |
+| Paragraphe sous les totaux | `{formuleArrete}` |
 | Montant en lettres, paragraphe suivant | `{montantEnLettres}.` |
 
-Conservez « Nous vous remercions de votre confiance » et « Signature » comme textes fixes. La balise `{montantEnLettres}` **contient déjà Dirhams et, si nécessaire, les centimes**. N’ajoutez pas « Dirhams » après elle. Vous pouvez réunir les deux paragraphes en `Arrêté la présente facture à la somme de : {montantEnLettres}.` si vous souhaitez abandonner la disposition sur deux lignes du modèle.
+Conservez « Nous vous remercions de votre confiance » et « Signature » comme textes fixes. La balise `{montantEnLettres}` **contient déjà Dirhams et, si nécessaire, les centimes**. N’ajoutez pas « Dirhams » après elle. Vous pouvez réunir les deux paragraphes en `{formuleArrete} {montantEnLettres}.` si vous souhaitez abandonner la disposition sur deux lignes du modèle.
 
 La référence vide (y compris des espaces seuls) supprime son paragraphe entier. La case « Afficher TOTAL A PAYER », cochée par défaut, commande uniquement la ligne de total du document ; les calculs et le montant en lettres restent identiques.
 
 La date arrive déjà au format `jj/mm/aaaa`, le destinataire en majuscules et les montants au format `11 000,00`. Word ne réalise aucun calcul supplémentaire.
+
+Les balises `{titreDocument}` et `{formuleArrete}` sont communes aux factures et devis : `FACTURE` / `DEVIS` et « Arrêté la présente facture… » / « Arrêté le présent devis… ». Conservez-les pour que le même modèle fonctionne avec les deux types.
 
 ## Ligne de prestations répétée
 

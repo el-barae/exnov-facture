@@ -1,6 +1,6 @@
 # EXNOV — Espace facturation
 
-Application Next.js 16 (App Router), TypeScript et Tailwind CSS. Formulaire en français, aperçu A4 paginé en direct, exports PDF et Word, sans compte ni base de données.
+Application de génération de **factures et devis** avec Next.js 16 (App Router), TypeScript et Tailwind CSS. Formulaire en français, aperçu A4 paginé en direct, exports PDF et Word, sans compte ni base de données.
 
 ## Démarrage
 
@@ -33,11 +33,17 @@ Sous Windows, utiliser par exemple `C:/Program Files/Google/Chrome/Application/c
 
 Après un changement de code, de configuration, de modèle ou d’images, redéployer le projet sur Vercel.
 
+## Factures et devis
+
+Le champ **Type de document** permet de choisir Facture ou Devis. Les deux utilisent la même mise en page, les mêmes calculs et options, et le même modèle Word. Le titre devient `FACTURE Nº` ou `DEVIS Nº`, la formule en lettres est adaptée, et les fichiers portent le préfixe `Facture-EXNOV-` ou `Devis-EXNOV-`. Les retenues restent modifiables dans les deux modes.
+
+Changer de type conserve la saisie et propose un numéro propre au type choisi. Les numéros de facture et de devis sont indépendants ; les numéros modifiés pendant la session sont conservés lors des allers-retours. Les anciens appels API sans `typeDocument` restent traités comme des factures. Les deux routes existantes `/api/factures/pdf` et `/api/factures/word` acceptent les deux types.
+
 ## Utilisation et sauvegarde locale
 
 Le premier numéro proposé est 1, modifiable. Un téléchargement réussi mémorise le numéro utilisé. Télécharger le même document en PDF puis en Word conserve le même numéro. Un rechargement propose le dernier numéro utilisé + 1 ; **Nouvelle facture** propose le numéro suivant et conserve le client.
 
-La seule clé `localStorage`, `exnov.facturation.v1`, contient `dernierNumero` et `client` (`destinataire`, `reference`). Les dernières informations client sont mémorisées pendant la saisie. Aucune date, prestation, somme ou facture n’est enregistrée. Une saisie non exportée disparaît donc au rechargement. La numérotation est propre au navigateur, sans synchronisation entre appareils. Si le stockage local est bloqué, la création et les exports fonctionnent avec un message explicatif.
+La seule clé `localStorage`, `exnov.facturation.v1`, contient `dernierNumero` (factures), `dernierNumeroDevis` (devis, après un premier export) et `client` (`destinataire`, `reference`). Les dernières informations client sont mémorisées pendant la saisie. Aucune date, prestation, somme ou facture n’est enregistrée. Une saisie non exportée disparaît donc au rechargement. La numérotation est propre au navigateur, sans synchronisation entre appareils. Si le stockage local est bloqué, la création et les exports fonctionnent avec un message explicatif.
 
 Les données sont envoyées à la fonction Vercel uniquement au clic sur un téléchargement, traitées en mémoire, puis renvoyées comme fichier. L’application ne sauvegarde pas les factures côté serveur et n’en journalise pas le contenu.
 

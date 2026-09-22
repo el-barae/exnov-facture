@@ -7,7 +7,14 @@ const decimal = (max: number, places: number, positive = false) => z.number()
   .refine(n => new Decimal(n).decimalPlaces() <= places, `Maximum ${places} décimales.`);
 const text = (max: number) => z.string().trim().min(1, "Ce champ est obligatoire.").max(max)
   .refine(v => !/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/u.test(v), "Caractère non autorisé.");
+export type DocumentType = "facture" | "devis";
+export const documentLabels = (type: DocumentType) => type === "devis"
+  ? { name: "Devis", title: "DEVIS", closing: "Arrêté le présent devis à la somme de :" }
+  : { name: "Facture", title: "FACTURE", closing: "Arrêté la présente facture à la somme de :" };
+export const documentFilename = (type: DocumentType, numero: number, format: "pdf" | "docx") => `${documentLabels(type).name}-EXNOV-${numero}.${format}`;
+
 export const invoiceSchema = z.object({
+  typeDocument: z.enum(["facture", "devis"]).default("facture"),
   numero: z.number().int().min(1).max(999999999),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v => {
     const d = new Date(`${v}T12:00:00Z`);
@@ -51,7 +58,7 @@ export const formatDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) ?
 export function invoiceView(invoice: Invoice) {
   const totals = calculateInvoice(invoice);
   return {
-    ...invoice, reference: invoice.reference.trim(),
+    ...invoice, titreDocument: documentLabels(invoice.typeDocument).title, formuleArrete: documentLabels(invoice.typeDocument).closing, reference: invoice.reference.trim(),
     numero: String(invoice.numero), date: formatDate(invoice.date), destinataire: invoice.destinataire.toLocaleUpperCase("fr-FR"),
     lignes: invoice.lignes.map((line, index) => ({ ...line, numeroPrix: index + 1, quantite: formatQuantity(line.quantite), prixUnitaire: formatMoney(line.prixUnitaire), prixTotal: formatMoney(totals.lineTotals[index]) })),
     totalHT: formatMoney(totals.totalHT), tva: formatMoney(totals.tva), ttc: formatMoney(totals.ttc),
@@ -63,8 +70,8 @@ export function invoiceView(invoice: Invoice) {
 export function today() {
   return new Intl.DateTimeFormat("sv-SE", { timeZone: "Africa/Casablanca" }).format(new Date());
 }
-export function newInvoice(numero = 1, client?: { destinataire: string; reference: string }): Invoice {
-  return { numero, date: today(), destinataire: client?.destinataire ?? "", reference: client?.reference ?? "", projet: "", lignes: [newLine()], afficherTotalAPayer: true, tauxTVA: 20, appliquerRasIS: true, tauxRasIS: 5, appliquerRasTVA: true, tauxRasTVA: 75 };
+export function newInvoice(numero = 1, client?: { destinataire: string; reference: string }, typeDocument: DocumentType = "facture"): Invoice {
+  return { typeDocument, numero, date: today(), destinataire: client?.destinataire ?? "", reference: client?.reference ?? "", projet: "", lignes: [newLine()], afficherTotalAPayer: true, tauxTVA: 20, appliquerRasIS: true, tauxRasIS: 5, appliquerRasTVA: true, tauxRasTVA: 75 };
 }
 export function newLine(): InvoiceLine {
   return { id: crypto.randomUUID(), designation: "", unite: "F", quantite: 1, prixUnitaire: 0 };

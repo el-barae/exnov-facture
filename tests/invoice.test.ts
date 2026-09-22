@@ -6,6 +6,36 @@ import { buildInvoiceHtml } from "../src/lib/document/html";
 import { generateWord } from "../src/lib/server/word";
 import PizZip from "pizzip";
 import { parseInvoiceRequest } from "../src/lib/server/request";
+import { documentFilename } from "../src/lib/invoice";
+import { lastDocumentNumber, numberPreference } from "../src/lib/storage";
+
+test("Factures et devis partagent les calculs et adaptent leurs titres et exports", async () => {
+  const facture = exampleInvoice();
+  const devis = { ...facture, typeDocument: "devis" as const, reference: "", afficherTotalAPayer: false };
+  assert.deepEqual(calculateInvoice(devis), calculateInvoice(facture));
+  assert.equal(invoiceSchema.parse({ ...facture, typeDocument: undefined }).typeDocument, "facture");
+  assert.equal(invoiceSchema.safeParse({ ...facture, typeDocument: "autre" }).success, false);
+  assert.equal(documentFilename("devis", 13, "docx"), "Devis-EXNOV-13.docx");
+  for (const invoice of [facture, devis]) {
+    const html = buildInvoiceHtml(invoice);
+    const xml = new PizZip(await generateWord(invoice)).file("word/document.xml")!.asText();
+    for (const text of [html, xml.replace(/<[^>]*>/g, "")]) {
+      assert.ok(text.includes(invoice.typeDocument === "devis" ? "DEVIS Nº 13" : "FACTURE Nº 13"));
+      assert.ok(text.includes(invoice.typeDocument === "devis" ? "Arrêté le présent devis" : "Arrêté la présente facture"));
+      assert.equal(text.includes("REFERENCE:"), invoice.typeDocument === "facture");
+      assert.equal(text.includes("TOTAL A PAYER"), invoice.afficherTotalAPayer);
+      assert.ok(text.includes("Onze Mille Dirhams"));
+    }
+  }
+});
+test("Les numéros de facture et devis restent indépendants avec l’ancien stockage", () => {
+  const legacy = { dernierNumero: 13 };
+  assert.equal(lastDocumentNumber(legacy, "facture"), 13);
+  assert.equal(lastDocumentNumber(legacy, "devis"), 0);
+  const saved = { ...legacy, ...numberPreference("devis", 4) };
+  assert.equal(lastDocumentNumber(saved, "facture"), 13);
+  assert.equal(lastDocumentNumber(saved, "devis"), 4);
+});
 
 test("Le modèle Dar Taliba aboutit à 11 000 DH avec les deux retenues", () => {
   assert.deepEqual(calculateInvoice(exampleInvoice()), { lineTotals: [6500, 4500], totalHT: 11000, tva: 2200, ttc: 13200, rasIS: 550, rasTVA: 1650, totalAPayer: 11000 });
@@ -71,7 +101,7 @@ test("Une saisie invalide provisoire ne fait pas planter l’aperçu", () => {
 test("Le serveur borne le flux JSON et ignore les totaux envoyés par le navigateur", async () => {
   const req = (body: string, type = "application/json") => new Request("http://localhost/api/factures/pdf", { method: "POST", headers: { "Content-Type": type }, body });
   await assert.rejects(parseInvoiceRequest(req("{")), /JSON/);
-  await assert.rejects(parseInvoiceRequest(req("a".repeat(500001))), /volumineuse/);
+  await assert.rejects(parseInvoiceRequest(req("a".repeat(500001))), /volumineux/);
   await assert.rejects(parseInvoiceRequest(req("{}", "text/plain")), /JSON/);
   const invoice = await parseInvoiceRequest(req(JSON.stringify({ ...exampleInvoice(), totalAPayer: 1 })));
   assert.equal(calculateInvoice(invoice).totalAPayer, 11000);
