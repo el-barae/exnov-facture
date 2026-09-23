@@ -1,8 +1,10 @@
-# EXNOV — Factures, devis et rapports IA
+# EXNOV — Factures, devis, rapports IA et projets
 
-Application de génération de **factures et devis** avec Next.js 16 (App Router), TypeScript et Tailwind CSS. Formulaire en français, aperçu A4 paginé en direct, exports PDF et Word, sans compte ni base de données.
+Application de génération de **factures et devis** avec Next.js 16 (App Router), TypeScript et Tailwind CSS. Formulaire en français, aperçu A4 paginé en direct, exports PDF et Word, sans compte ni base de données serveur.
 
 L’espace **Rapports IA**, accessible depuis le header, ajoute un chat avec photos, la rédaction et les révisions via **Kimi K3 sur AWS Bedrock**, un aperçu EXNOV paginé et l’export PDF. Voir [le guide de configuration et d’utilisation](docs/rapports-ia.md). Les variables à remplir sont dans `.env.example` ; la facturation fonctionne indépendamment de Bedrock.
+
+L’espace **Projets**, accessible dans la navigation et à `/projets`, suit les missions de génie civil : projets à gauche, workflow interactif, documents requis, avancement et historique. Les dossiers et les fichiers sont enregistrés dans **IndexedDB, dans le navigateur utilisé**, sans synchronisation entre appareils. Voir [le guide du suivi des projets](docs/projets.md).
 
 ## Démarrage
 
@@ -45,9 +47,9 @@ Changer de type conserve la saisie et propose un numéro propre au type choisi. 
 
 Le premier numéro proposé est 1, modifiable. Un téléchargement réussi mémorise le numéro utilisé. Télécharger le même document en PDF puis en Word conserve le même numéro. Un rechargement propose le dernier numéro utilisé + 1 ; **Nouvelle facture** propose le numéro suivant et conserve le client.
 
-La seule clé `localStorage`, `exnov.facturation.v1`, contient `dernierNumero` (factures), `dernierNumeroDevis` (devis, après un premier export) et `client` (`destinataire`, `reference`). Les dernières informations client sont mémorisées pendant la saisie. Aucune date, prestation, somme ou facture n’est enregistrée. Une saisie non exportée disparaît donc au rechargement. La numérotation est propre au navigateur, sans synchronisation entre appareils. Si le stockage local est bloqué, la création et les exports fonctionnent avec un message explicatif.
+La facturation utilise la clé `localStorage` `exnov.facturation.v1`, qui contient `dernierNumero` (factures), `dernierNumeroDevis` (devis, après un premier export) et `client` (`destinataire`, `reference`). Les dernières informations client sont mémorisées pendant la saisie. Aucune date, prestation, somme ou facture n’est automatiquement enregistrée par cet espace. Une saisie non exportée disparaît donc au rechargement. La numérotation est propre au navigateur, sans synchronisation entre appareils. Si le stockage local est bloqué, la création et les exports fonctionnent avec un message explicatif. Les documents joints manuellement à un projet sont, eux, conservés avec ce projet dans IndexedDB.
 
-Les données sont envoyées à la fonction Vercel uniquement au clic sur un téléchargement, traitées en mémoire, puis renvoyées comme fichier. L’application ne sauvegarde pas les factures côté serveur et n’en journalise pas le contenu.
+Les données de facturation sont envoyées à la fonction Vercel uniquement au clic sur un téléchargement, traitées en mémoire, puis renvoyées comme fichier. L’application ne sauvegarde pas les factures côté serveur et n’en journalise pas le contenu. Les fichiers joints aux projets restent dans le navigateur et ne sont pas envoyés au serveur.
 
 ## Calculs
 
@@ -98,6 +100,8 @@ npm run test:e2e
 Ce test lance Chromium, teste les deux routes et les boutons réels, les erreurs de validation, une facture de 28 prestations, la restauration du numéro et du client, et l’absence de débordement sur mobile. Les PDF, Word et captures sont placés dans `test-results/` (exclu de Git). Pour un autre port : `TEST_BASE_URL=http://localhost:3001 npm run test:e2e`.
 
 Les tests unitaires couvrent l’exemple, les quatre combinaisons de retenues, l’arrondi au centime, les dates invalides, les accords français, l’échappement HTML et la suppression réelle des lignes RAS dans le Word.
+
+Le suivi des projets dispose aussi de tests métier et d’un parcours navigateur : `npm run test:projects` (serveur démarré, `TEST_BASE_URL` facultatif). Ce parcours vérifie la création, le blocage des étapes prématurées, les pièces obligatoires, la sauvegarde des fichiers après rechargement, les échanges entre onglets, la reprise d’une étape, l’isolation des projets et l’affichage mobile. Les captures sont dans `test-results/projets/`.
 
 ## Organisation
 
