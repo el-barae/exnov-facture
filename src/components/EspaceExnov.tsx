@@ -1,14 +1,15 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BookOpen, FileText, FolderKanban, Sparkles } from "lucide-react";
-import { AtelierFacture } from "./AtelierFacture";
+import { AtelierFacture, type AtelierFactureHandle } from "./AtelierFacture";
 import { AtelierRapport } from "./AtelierRapport";
-import { EspaceProjets } from "./EspaceProjets";
+import { EspaceProjets, type ProjectGenerator } from "./EspaceProjets";
 import { AtelierCps } from "./AtelierCps";
 
 type Service = "factures" | "rapports" | "projets" | "cps";
 
 export function EspaceExnov({ initialService = "factures" }: { initialService?: Service }) {
+  const invoiceEditor = useRef<AtelierFactureHandle>(null);
   const [service, setService] = useState<Service>(initialService);
   const [reportsVisited, setReportsVisited] = useState(false);
   const [projectsVisited, setProjectsVisited] = useState(initialService === "projets");
@@ -34,6 +35,13 @@ export function EspaceExnov({ initialService = "factures" }: { initialService?: 
     const url = next === "cps" ? "/cps" : next === "projets" ? "/projets" : next === "rapports" ? "/?service=rapports" : "/";
     if (`${window.location.pathname}${window.location.search}` !== url) window.history.pushState(null, "", url);
   }
+  function openProjectGenerator(kind: ProjectGenerator) {
+    if (kind === "devis" || kind === "facture") {
+      invoiceEditor.current?.selectDocumentType(kind);
+      select("factures");
+    } else select(kind === "rapport" ? "rapports" : "cps");
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }
   return <>
     <header className="app-header">
       <div className="header-inner">
@@ -51,9 +59,9 @@ export function EspaceExnov({ initialService = "factures" }: { initialService?: 
         <div className="header-account"><span className="company-location">Tanger, Maroc</span><span className="avatar">EX</span></div>
       </div>
     </header>
-    <div hidden={service !== "factures"}><AtelierFacture/></div>
+    <div hidden={service !== "factures"}><AtelierFacture ref={invoiceEditor}/></div>
     {reportsVisited && <div hidden={service !== "rapports"}><AtelierRapport/></div>}
-    {projectsVisited && <div hidden={service !== "projets"}><EspaceProjets/></div>}
+    {projectsVisited && <div hidden={service !== "projets"}><EspaceProjets onOpenGenerator={openProjectGenerator}/></div>}
     {cpsVisited && <div hidden={service !== "cps"}><AtelierCps/></div>}
   </>;
 }

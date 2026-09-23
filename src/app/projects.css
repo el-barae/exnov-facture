@@ -163,6 +163,10 @@
 .project-step-notice.ready{background:#edf5e9;color:#527a42}
 .project-step-notice svg{flex-shrink:0}
 .project-required-files{display:grid;gap:12px;margin-top:18px}
+.project-generation-action{margin:18px 0}
+.project-generation-action .secondary-button{width:100%;justify-content:flex-start;border-color:#d5dfcc;background:#f8fbf4;color:#526d43}
+.project-generation-action .secondary-button>svg:last-child{margin-left:auto}
+.project-generation-action .project-hint{margin:8px 0 0}
 .project-required-file{border:1px solid #e7e9dc;border-radius:8px;padding:15px}
 .project-required-file.is-missing{border-color:#e9dfbb;background:#fffdf6}
 .project-required-file.is-present{border-color:#dce8d5;background:#f9fcf7}

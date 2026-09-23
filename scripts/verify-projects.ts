@@ -49,6 +49,35 @@ try {
   assert.ok(await page.$eval(".project-empty-state", element => element.textContent?.includes("premier projet")));
   await create("Aménagement du souk communal", true);
 
+  // Les raccourcis ferment la fenêtre, ouvrent le bon atelier et préservent le dossier.
+  for (const [step, label, target] of [
+    ["cadrage", "Générer un devis", "devis"],
+    ["facturation", "Générer une facture", "facture"],
+    ["diagnostic", "Générer un rapport", "rapport"],
+    ["livrables", "Générer un CPS", "cps"],
+    ["cadrage", "Générer un devis", "devis"],
+  ]) {
+    await page.click(`[data-step="${step}"]`);
+    await click(label);
+    await page.waitForSelector("dialog[open]", { hidden: true });
+    if (target === "devis" || target === "facture") {
+      await page.waitForFunction(type => {
+        const field = document.querySelector<HTMLSelectElement>('[name="typeDocument"]');
+        return field?.checkVisibility() && field.value === type;
+      }, {}, target);
+      const value = await page.$eval('[name="projet"]', element => (element as HTMLTextAreaElement).value);
+      if (!value) await page.type('[name="projet"]', "Saisie conservée via les raccourcis");
+      else assert.equal(value, "Saisie conservée via les raccourcis");
+    } else {
+      await page.waitForFunction(target => document.querySelector(target === "cps" ? "#cps-prompt" : "#report-prompt")?.checkVisibility(), {}, target);
+      assert.equal(new URL(page.url()).pathname, target === "cps" ? "/cps" : "/");
+    }
+    await click("Projets");
+    await waitStep("cadrage");
+    assert.equal(await page.$eval(".project-overview h2", element => element.textContent), "Aménagement du souk communal");
+    assert.equal(await page.$eval('[role="progressbar"]', element => element.getAttribute("aria-valuenow")), "0");
+  }
+
   // Impossible de sauter une étape ; les futures pièces peuvent néanmoins être préparées.
   await page.click('[data-step="livrables"]');
   assert.equal(await page.$eval('dialog[open]', element => element.textContent?.includes("Validez d’abord")), true);

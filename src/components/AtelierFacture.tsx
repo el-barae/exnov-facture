@@ -1,12 +1,14 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import { ArrowDownToLine, ArrowUpRight, Check, CircleHelp, FileDown, FilePlus2, FileText, LoaderCircle, LockKeyhole, RotateCcw } from "lucide-react";
 import { documentFilename, documentLabels, exampleInvoice, invoiceSchema, newInvoice, type DocumentType, type Invoice } from "@/lib/invoice";
 import { lastDocumentNumber, numberPreference, readPreferences, savePreferences } from "@/lib/storage";
 import { FormulaireFacture } from "./FormulaireFacture";
 import { ApercuFacture } from "./ApercuFacture";
 
-export function AtelierFacture() {
+export type AtelierFactureHandle = { selectDocumentType: (type: DocumentType) => void };
+
+export function AtelierFacture({ ref }: { ref?: Ref<AtelierFactureHandle> }) {
   const [invoice, setInvoice] = useState<Invoice>(() => ({ ...newInvoice(), date: "" }));
   const numbers = useRef<Partial<Record<DocumentType, number>>>({});
   const isDevis = invoice.typeDocument === "devis";
@@ -41,6 +43,7 @@ export function AtelierFacture() {
     }
     setInvoice(i => ({ ...i, ...patch })); setMessage(""); setError("");
   }
+  useImperativeHandle(ref, () => ({ selectDocumentType: type => update({ typeDocument: type }) }));
   async function download(format: "pdf" | "word") {
     if (busy) return;
     setError(""); setMessage("");

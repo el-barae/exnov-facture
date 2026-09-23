@@ -8,6 +8,13 @@ import { FormulaireProjet } from "./FormulaireProjet";
 import { ProjetDialog } from "./ProjetDialog";
 
 const STEP_ICONS = { cadrage: Users, visite: MapPin, diagnostic: ClipboardCheck, chiffrage: Receipt, etudes: Wrench, livrables: FileText, validation: BadgeCheck, facturation: FileCheck2 };
+export type ProjectGenerator = "devis" | "rapport" | "cps" | "facture";
+const STEP_GENERATORS: Partial<Record<StepId, { kind: ProjectGenerator; label: string }>> = {
+  cadrage: { kind: "devis", label: "Générer un devis" },
+  diagnostic: { kind: "rapport", label: "Générer un rapport" },
+  livrables: { kind: "cps", label: "Générer un CPS" },
+  facturation: { kind: "facture", label: "Générer une facture" },
+};
 function dateLabel(value: string, time = false) {
   return new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short", ...(time ? { hour: "2-digit", minute: "2-digit" } : { year: "numeric" }) }).format(new Date(value));
 }
@@ -30,9 +37,10 @@ function UploadDocument({ kind, label = "Joindre le document", busy, onUpload }:
   </label>;
 }
 
-function StepDialog({ project, stepId, busy, error, onClose, onComplete, onUpload, onDownload, onReopen }: {
+function StepDialog({ project, stepId, busy, error, onClose, onComplete, onUpload, onDownload, onReopen, onOpenGenerator }: {
   project: CivilProject; stepId: StepId; busy: boolean; error: string; onClose: () => void;
   onComplete: () => void; onUpload: (kind: DocumentKind, file: File) => void; onDownload: (doc: ProjectDocument) => void; onReopen: () => void;
+  onOpenGenerator: (kind: ProjectGenerator) => void;
 }) {
   const [confirmReopen, setConfirmReopen] = useState(false);
   const step = WORKFLOW_STEPS.find(item => item.id === stepId)!;
@@ -43,12 +51,14 @@ function StepDialog({ project, stepId, busy, error, onClose, onComplete, onUploa
   const skipped = stepId === "chiffrage" && !project.withBdp;
   const isCurrent = current?.id === stepId;
   const optional = project.documents.filter(doc => !required.some(kind => kind.id === doc.kind) && DOCUMENT_KINDS.find(kind => kind.id === doc.kind)?.stepId === stepId);
+  const generator = STEP_GENERATORS[stepId];
   return <ProjetDialog title={step.title} busy={busy} onClose={onClose}>
     <p className="project-dialog-intro">{step.description}</p>
     {skipped ? <p className="project-info">Le chiffrage BDP n’est pas prévu dans cette mission.</p> : <>
       {completion ? <p className="project-success"><CheckCheck size={17}/> Étape validée le {dateLabel(completion.completedAt, true)}.</p>
         : isCurrent ? <p className={`project-step-notice ${missing.length ? "needs-documents" : "ready"}`}>{missing.length ? <Upload size={18}/> : <Check size={18}/>}<span>{missing.length ? `${missing.length} pièce${missing.length > 1 ? "s" : ""} manquante${missing.length > 1 ? "s" : ""} pour valider cette étape.` : "Cette étape est prête à être validée."}</span></p>
         : <p className="project-info"><LockKeyhole size={16}/> Vous pouvez préparer les documents. Validez d’abord « {current?.title} » pour avancer dans l’ordre.</p>}
+      {generator && <div className="project-generation-action"><button type="button" className="secondary-button" disabled={busy} onClick={() => onOpenGenerator(generator.kind)}><FileText size={16}/>{generator.label}<ArrowRight size={16}/></button><p className="project-hint">Téléchargez le document généré, puis revenez le joindre au projet.</p></div>}
       <div className="project-required-files">
         {required.map(kind => {
           const documents = project.documents.filter(doc => doc.kind === kind.id);
@@ -72,7 +82,7 @@ function StepDialog({ project, stepId, busy, error, onClose, onComplete, onUploa
   </ProjetDialog>;
 }
 
-export function EspaceProjets() {
+export function EspaceProjets({ onOpenGenerator }: { onOpenGenerator: (kind: ProjectGenerator) => void }) {
   const [projects, setProjects] = useState<CivilProject[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -141,6 +151,10 @@ export function EspaceProjets() {
   }
   function upload(kind: DocumentKind, file: File) {
     if (project) void run(() => attachProjectFile(project, kind, file), `« ${file.name} » ajouté au dossier.`);
+  }
+  function openGenerator(kind: ProjectGenerator) {
+    setActiveStep(null); setError("");
+    onOpenGenerator(kind);
   }
   async function download(doc: ProjectDocument) {
     if (!project) return;
@@ -237,7 +251,7 @@ export function EspaceProjets() {
       </section>
     </div>
     {form && <FormulaireProjet key={form === "new" ? "new" : form.id} project={form === "new" ? undefined : form} busy={busy} error={error} onClose={() => { setForm(null); setError(""); }} onSave={saveDetails}/>}
-    {project && activeStep && <StepDialog key={`${project.id}-${activeStep}`} project={project} stepId={activeStep} busy={busy} error={error} onClose={() => { setActiveStep(null); setError(""); }} onComplete={() => completeStep(activeStep)} onUpload={upload} onDownload={download} onReopen={() => void run(() => updateStoredProject(project, { type: "reopen", stepId: activeStep }), "Étape reprise. Les documents du dossier ont été conservés.", () => setActiveStep(null))}/>}
+    {project && activeStep && <StepDialog key={`${project.id}-${activeStep}`} project={project} stepId={activeStep} busy={busy} error={error} onClose={() => { setActiveStep(null); setError(""); }} onComplete={() => completeStep(activeStep)} onUpload={upload} onDownload={download} onOpenGenerator={openGenerator} onReopen={() => void run(() => updateStoredProject(project, { type: "reopen", stepId: activeStep }), "Étape reprise. Les documents du dossier ont été conservés.", () => setActiveStep(null))}/>}
     {project && documentToRemove && <ProjetDialog title="Retirer ce document ?" busy={busy} onClose={() => { setDocumentToRemove(null); setError(""); }}><p className="project-dialog-intro">« {documentToRemove.name} » sera retiré de ce dossier. Conservez une copie si nécessaire.</p><p className="project-hint">Une pièce nécessaire à une étape déjà validée ne peut être retirée sans remplacement ou reprise de l’étape.</p>{error && <p className="project-error" role="alert">{error}</p>}<footer className="project-dialog-actions"><button type="button" className="secondary-button" disabled={busy} onClick={() => { setDocumentToRemove(null); setError(""); }}>Annuler</button><button type="button" className="primary-button" disabled={busy} onClick={() => void run(() => updateStoredProject(project, { type: "removeDocument", documentId: documentToRemove.id }), "Document retiré.", () => setDocumentToRemove(null))}><Trash2 size={16}/> Retirer le document</button></footer></ProjetDialog>}
   </main>;
 }

@@ -32,6 +32,8 @@ La validation signifie que l’utilisateur confirme l’avancement. L’applicat
 
 La section **Documents du projet** permet de joindre des pièces avant leur étape. Choisir la bonne catégorie : le workflow réutilise les fichiers déjà enregistrés et ne les redemande pas. Les exports produits dans les espaces Factures et Rapports doivent être téléchargés puis joints au projet ; ils ne sont pas associés automatiquement.
 
+Les fenêtres **Accord & devis**, **Diagnostic**, **CPS & plans** et **Facturation** proposent un bouton **Générer** ouvrant l’atelier correspondant. Le devis et la facture sélectionnent automatiquement le bon type de document. La fenêtre se ferme sans valider l’étape ; le projet sélectionné, ses pièces et son avancement restent conservés. Après génération, télécharger le document, revenir dans **Projets** et le joindre à son étape.
+
 Formats acceptés : PDF, DOC/DOCX, XLS/XLSX, CSV, PNG/JPG/JPEG/WebP, DWG/DXF et ZIP. Limites : **20 Mo par fichier**, **200 documents par projet**, sous réserve de l’espace disponible dans le navigateur. Les fichiers vides ou de format non pris en charge sont refusés. Chaque document peut être téléchargé dans son format d’origine.
 
 Pour corriger l’avancement, ouvrir une étape validée puis **Reprendre à cette étape** et confirmer. Cette validation et les suivantes sont annulées ; les documents et l’historique sont conservés. Une pièce obligatoire justifiant une validation ne peut être retirée sans ajout d’un remplacement de même catégorie ou reprise de l’étape.
