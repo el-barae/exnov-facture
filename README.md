@@ -1,10 +1,12 @@
-# EXNOV — Factures, devis, rapports IA et projets
+# EXNOV — Factures, devis, rapports IA, CPS et projets
 
 Application de génération de **factures et devis** avec Next.js 16 (App Router), TypeScript et Tailwind CSS. Formulaire en français, aperçu A4 paginé en direct, exports PDF et Word, sans compte ni base de données serveur.
 
 L’espace **Rapports IA**, accessible depuis le header, ajoute un chat avec photos, la rédaction et les révisions via **Kimi K3 sur AWS Bedrock**, un aperçu EXNOV paginé et l’export PDF. Voir [le guide de configuration et d’utilisation](docs/rapports-ia.md). Les variables à remplir sont dans `.env.example` ; la facturation fonctionne indépendamment de Bedrock.
 
 L’espace **Projets**, accessible dans la navigation et à `/projets`, suit les missions de génie civil : projets à gauche, workflow interactif, documents requis, avancement et historique. Les dossiers et les fichiers sont enregistrés dans **IndexedDB, dans le navigateur utilisé**, sans synchronisation entre appareils. Voir [le guide du suivi des projets](docs/projets.md).
+
+L’espace **CPS IA**, accessible dans la navigation et à `/cps`, génère un cahier des prescriptions spéciales à partir d’un logo et d’une description du projet. Il reprend la structure des quatre CPS de référence, propose un aperçu et des révisions par consigne, puis exporte un **Word modifiable** avec sommaire, clauses, prescriptions techniques, ouvrages, bordereau des prix et signatures. Il utilise la même configuration Bedrock que les rapports. Voir [le guide CPS](docs/cps-ia.md). Vérification navigateur : `npm run test:cps` avec le serveur démarré.
 
 ## Démarrage
 

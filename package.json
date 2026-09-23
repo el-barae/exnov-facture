@@ -15,7 +15,8 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "test:e2e": "node --import tsx scripts/verify-exports.ts",
     "test:reports": "node --import tsx scripts/verify-reports.ts",
-    "test:projects": "node --import tsx scripts/verify-projects.ts"
+    "test:projects": "node --import tsx scripts/verify-projects.ts",
+    "test:cps": "node --import tsx scripts/verify-cps.ts"
   },
   "dependencies": {
     "@sparticuz/chromium": "153.0.0",
