@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { exampleReport, MAX_REPORT_REQUEST_BYTES, reportChatSchema, reportExportSchema, reportFilename, reportSchema, type ReportChat, type ReportImage } from "../src/lib/report";
-import { bedrockPayload, generateReport } from "../src/lib/server/bedrock";
+import { bedrockConfiguration, bedrockPayload, bedrockResponseText, generateReport } from "../src/lib/server/bedrock";
 import { parseReportRequest, validateReportImages } from "../src/lib/server/report-request";
 import { RequestError } from "../src/lib/server/request";
 import { buildReportHtml } from "../src/lib/document/report";
@@ -17,7 +17,7 @@ async function withConfig(action: () => Promise<void>) {
   const previous = names.map(name => process.env[name]);
   process.env.AWS_REGION = "eu-west-3";
   process.env.AWS_BEARER_TOKEN_BEDROCK = "fake-bedrock-token-for-tests";
-  process.env.BEDROCK_MODEL_ID = "global.moonshotai.kimi-k3";
+  process.env.BEDROCK_MODEL_ID = "global.anthropic.claude-sonnet-4-6";
   try { await action(); } finally { names.forEach((name, index) => { if (previous[index] === undefined) delete process.env[name]; else process.env[name] = previous[index]; }); }
 }
 
@@ -74,17 +74,20 @@ test("Bedrock : clé côté serveur, photos, historique et rapport actuel transm
     let calls = 0;
     const fetcher: typeof fetch = async (url, options) => {
       calls++;
-      assert.equal(url, "https://bedrock-runtime.eu-west-3.amazonaws.com/openai/v1/chat/completions");
+      assert.equal(url, "https://bedrock-runtime.eu-west-3.amazonaws.com/model/global.anthropic.claude-sonnet-4-6/invoke");
       assert.equal(new Headers(options?.headers).get("Authorization"), "Bearer fake-bedrock-token-for-tests");
       const payload = JSON.parse(String(options?.body));
-      assert.equal(payload.model, "global.moonshotai.kimi-k3");
-      assert.ok(payload.messages[1].content.includes(JSON.stringify(report)));
-      assert.equal(payload.messages[2].content, "Crée un rapport.");
-      assert.equal(payload.messages.at(-1).content[1].image_url.url, image.dataUrl);
+      assert.equal(payload.anthropic_version, "bedrock-2023-05-31");
+      assert.equal(payload.model, undefined);
+      assert.equal(payload.max_tokens, 16000);
+      assert.ok(payload.system.includes("BET EXNOV"));
+      assert.ok(payload.messages.at(-1).content[0].text.includes(JSON.stringify(report)));
+      assert.equal(payload.messages[0].content, "Crée un rapport.");
+      assert.deepEqual(payload.messages.at(-1).content[2].source, { type: "base64", media_type: "image/png", data: image.dataUrl.split(",")[1] });
       assert.equal(payload.messages.at(-1).content.at(-1).text, "Ajoute une conclusion.");
-      assert.equal(payload.response_format.json_schema.strict, true);
-      assert.ok(!JSON.stringify(payload.response_format).includes('"maxLength"'));
-      return Response.json({ choices: [{ finish_reason: "stop", message: { content: JSON.stringify({ message: "Conclusion ajoutée.", report }) } }] });
+      assert.equal(payload.output_config.format.type, "json_schema");
+      assert.ok(!JSON.stringify(payload.output_config).includes('"maxLength"'));
+      return Response.json({ stop_reason: "end_turn", content: [{ type: "text", text: JSON.stringify({ message: "Conclusion ajoutée.", report }) }] });
     };
     const result = await generateReport(input, undefined, fetcher);
     assert.equal(result.message, "Conclusion ajoutée.");
@@ -95,13 +98,13 @@ test("Bedrock : clé côté serveur, photos, historique et rapport actuel transm
 
 test("Bedrock : demande de précision sans rapport et profil configurable", async () => {
   await withConfig(async () => {
-    process.env.BEDROCK_MODEL_ID = "us.moonshotai.kimi-k3";
-    const fetcher: typeof fetch = async (_, options) => {
-      assert.equal(JSON.parse(String(options?.body)).model, "us.moonshotai.kimi-k3");
-      return Response.json({ choices: [{ finish_reason: "stop", message: { content: JSON.stringify({ message: "Quel est le projet ?", report: null }) } }] });
+    process.env.BEDROCK_MODEL_ID = "eu.anthropic.claude-sonnet-4-6";
+    const fetcher: typeof fetch = async (url) => {
+      assert.equal(url, "https://bedrock-runtime.eu-west-3.amazonaws.com/model/eu.anthropic.claude-sonnet-4-6/invoke");
+      return Response.json({ stop_reason: "end_turn", content: [{ type: "text", text: JSON.stringify({ message: "Quel est le projet ?", report: null }) }] });
     };
     assert.deepEqual(await generateReport(requestData(), undefined, fetcher), { message: "Quel est le projet ?", report: null });
-    assert.ok(bedrockPayload(requestData(), "test").messages[0]);
+    assert.ok(bedrockPayload(requestData()).messages[0]);
   });
 });
 
@@ -126,12 +129,29 @@ test("Bedrock : erreurs de configuration, quota, authentification et connexion s
 test("Bedrock : les réponses tronquées, invalides et les images inventées sont refusées", async () => {
   await withConfig(async () => {
     const report = exampleReport(); report.sections[0].images = [{ imageId: "imaginary-photo", caption: "Image inconnue" }];
-    for (const choice of [
-      { finish_reason: "length", message: { content: "{" } },
-      { finish_reason: "stop", message: { content: "<html>not JSON</html>" } },
-      { finish_reason: "stop", message: { content: JSON.stringify({ message: "ok", report: {} }) } },
-      { finish_reason: "stop", message: { content: JSON.stringify({ message: "ok", report }) } },
-      { finish_reason: "content_filter", message: { content: "" } },
-    ]) await assert.rejects(() => generateReport(requestData(), undefined, async () => Response.json({ choices: [choice] })), errorStatus(502));
+    for (const response of [
+      { stop_reason: "max_tokens", content: [{ type: "text", text: "{" }] },
+      { stop_reason: "end_turn", content: [{ type: "text", text: "<html>not JSON</html>" }] },
+      { stop_reason: "end_turn", content: [{ type: "text", text: JSON.stringify({ message: "ok", report: {} }) }] },
+      { stop_reason: "end_turn", content: [{ type: "text", text: JSON.stringify({ message: "ok", report }) }] },
+      { stop_reason: "refusal", content: [{ type: "text", text: "" }] },
+    ]) await assert.rejects(() => generateReport(requestData(), undefined, async () => Response.json(response)), errorStatus(502));
+  });
+});
+
+test("Claude : modèle par défaut et JSON séparé des blocs de raisonnement", async () => {
+  await withConfig(async () => {
+    delete process.env.BEDROCK_MODEL_ID;
+    assert.equal(bedrockConfiguration().model, "global.anthropic.claude-sonnet-4-6");
+    const json = JSON.stringify({ message: "Projet à préciser", report: null });
+    assert.equal(bedrockResponseText({
+      stop_reason: "end_turn",
+      content: [{ type: "thinking", thinking: "Interne" }, { type: "text", text: json.slice(0, 10) }, { type: "text", text: json.slice(10) }],
+    }), json);
+    for (const response of [
+      { stop_reason: "refusal", content: [{ type: "text", text: json }] },
+      { stop_reason: "tool_use", content: [{ type: "text", text: json }] },
+      { stop_reason: "end_turn", content: [] },
+    ]) assert.throws(() => bedrockResponseText(response));
   });
 });

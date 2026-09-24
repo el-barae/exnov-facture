@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Check, FileDown, FilePlus2, ImagePlus, LoaderCircle, Send, Sparkles, Square, X } from "lucide-react";
-import { exampleReport, MAX_REPORT_IMAGES, MAX_REPORT_TURNS, reportFilename, reportReplySchema, type Report, type ReportImage, type ReportMessage } from "@/lib/report";
+import { exampleReport, MAX_REPORT_IMAGES, MAX_REPORT_TURNS, MAX_REPORT_PROMPT_LENGTH, reportFilename, reportReplySchema, type Report, type ReportImage, type ReportMessage } from "@/lib/report";
 import { buildReportHtml } from "@/lib/document/report";
 import { prepareReportImage } from "@/lib/report-images";
 import { ApercuDocument } from "./ApercuDocument";
@@ -115,7 +115,7 @@ export function AtelierRapport() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={image.dataUrl} alt={image.name}/><span title={image.name}>{image.name}</span><button type="button" disabled={!!busy} aria-label={`Retirer ${image.name}`} onClick={() => removeImage(image.id)}><X size={13}/></button>
           </div>)}</div>}
-          <label className="sr-only" htmlFor="report-prompt">Votre demande</label><textarea id="report-prompt" ref={composer} value={prompt} onChange={event => setPrompt(event.target.value)} disabled={!!busy || atLimit} maxLength={6000} rows={5} placeholder={report ? "Ajoute une conclusion, développe les observations, modifie le titre…" : "Ex. : Rapport de visite du chantier à Tanger, le 22 septembre. Voici mes observations…"}/>
+          <label className="sr-only" htmlFor="report-prompt">Votre demande</label><textarea id="report-prompt" ref={composer} value={prompt} onChange={event => setPrompt(event.target.value)} disabled={!!busy || atLimit} maxLength={MAX_REPORT_PROMPT_LENGTH} rows={5} placeholder={report ? "Ajoute une conclusion, développe les observations, modifie le titre…" : "Ex. : Rapport de visite du chantier à Tanger, le 22 septembre. Voici mes observations…"}/>
           <input type="file" ref={upload} accept="image/jpeg,image/png,image/webp" multiple hidden onChange={event => void attach(event.target.files)}/>
           <div className="report-composer-actions"><button type="button" className="secondary-button" disabled={!!busy || images.length >= MAX_REPORT_IMAGES} onClick={() => upload.current?.click()}>{busy === "images" ? <LoaderCircle size={16} className="animate-spin"/> : <ImagePlus size={16}/>} Photos <span>{images.length}/{MAX_REPORT_IMAGES}</span></button>{busy === "chat" ? <button className="secondary-button" type="button" onClick={() => request.current?.abort()}><Square size={14}/> Annuler</button> : <button type="submit" className="primary-button" disabled={!!busy || !prompt.trim() || atLimit}><Send size={15}/>{report ? "Modifier le rapport" : "Envoyer"}</button>}</div>
           <p className="report-upload-hint">JPG, PNG ou WebP · 12 Mo par photo avant optimisation</p>

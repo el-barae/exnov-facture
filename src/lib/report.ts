@@ -4,6 +4,7 @@ export const MAX_REPORT_IMAGES = 6;
 export const MAX_IMAGE_BYTES = 400_000;
 export const MAX_REPORT_REQUEST_BYTES = 3_800_000;
 export const MAX_REPORT_TURNS = 20;
+export const MAX_REPORT_PROMPT_LENGTH = 12000;
 const text = (max: number) => z.string().trim().max(max);
 const imageId = z.string().regex(/^[a-zA-Z0-9-]{1,64}$/);
 
@@ -28,7 +29,7 @@ export const reportImageSchema = z.strictObject({
 const imagesSchema = z.array(reportImageSchema).max(MAX_REPORT_IMAGES)
   .refine(images => new Set(images.map(image => image.id)).size === images.length, "Les images doivent avoir des identifiants distincts.");
 export const reportMessageSchema = z.strictObject({
-  role: z.enum(["user", "assistant"]), content: text(6000).min(1),
+  role: z.enum(["user", "assistant"]), content: text(MAX_REPORT_PROMPT_LENGTH).min(1),
 });
 export const reportChatSchema = z.strictObject({
   messages: z.array(reportMessageSchema).min(1).max(MAX_REPORT_TURNS * 2 - 1),

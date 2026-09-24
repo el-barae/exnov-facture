@@ -13,7 +13,7 @@ const errorStatus = (status: number) => (error: unknown) => error instanceof Req
 async function withConfig(action: () => Promise<void>) {
   const keys = ["AWS_REGION", "AWS_BEARER_TOKEN_BEDROCK", "BEDROCK_MODEL_ID"];
   const old = keys.map(key => process.env[key]);
-  process.env.AWS_REGION = "eu-west-3"; process.env.AWS_BEARER_TOKEN_BEDROCK = "fake-test-token"; process.env.BEDROCK_MODEL_ID = "global.moonshotai.kimi-k3";
+  process.env.AWS_REGION = "eu-west-3"; process.env.AWS_BEARER_TOKEN_BEDROCK = "fake-test-token"; process.env.BEDROCK_MODEL_ID = "global.anthropic.claude-sonnet-4-6";
   try { await action(); } finally { keys.forEach((key, i) => { if (old[i] === undefined) delete process.env[key]; else process.env[key] = old[i]; }); }
 }
 
@@ -85,18 +85,23 @@ test("CPS IA : instructions séparées des modèles, référence choisie et rév
   await withConfig(async () => {
     const doc = exampleCps();
     const request: CpsGenerate = { ...input(), reference: "souk", document: doc, prompt: "Porte le délai à 4 mois." };
-    const payload = cpsPayload(request, "model");
-    assert.ok(payload.messages[0].content.includes("DONNÉES"));
-    assert.ok(payload.messages[1].content.includes("GHOUJINE"));
-    assert.ok(!payload.messages[1].content.includes("BOUKMAKH"));
-    assert.ok(payload.messages[1].content.includes(JSON.stringify(doc)));
-    assert.equal(payload.messages.at(-1)?.content, request.prompt);
-    assert.ok(!JSON.stringify(payload.response_format).includes('"maxLength"'));
+    const payload = cpsPayload(request);
+    assert.ok(payload.system.includes("DONNÉES"));
+    assert.ok(payload.messages[0].content.includes("GHOUJINE"));
+    assert.ok(!payload.messages[0].content.includes("BOUKMAKH"));
+    assert.ok(payload.messages[0].content.includes(JSON.stringify(doc)));
+    assert.ok(payload.messages.at(-1)?.content.endsWith(request.prompt));
+    assert.ok(!JSON.stringify(payload.output_config).includes('"maxLength"'));
     const revised = { ...doc, deadline: "4 mois" };
     const reply = await generateCps(request, undefined, async (url, options) => {
-      assert.equal(url, "https://bedrock-runtime.eu-west-3.amazonaws.com/openai/v1/chat/completions");
+      assert.equal(url, "https://bedrock-runtime.eu-west-3.amazonaws.com/model/global.anthropic.claude-sonnet-4-6/invoke");
       assert.equal(new Headers(options?.headers).get("Authorization"), "Bearer fake-test-token");
-      return Response.json({ choices: [{ finish_reason: "stop", message: { content: JSON.stringify({ message: "Délai modifié.", document: revised }) } }] });
+      const sent = JSON.parse(String(options?.body));
+      assert.deepEqual(sent, payload);
+      assert.equal(sent.anthropic_version, "bedrock-2023-05-31");
+      assert.equal(sent.max_tokens, 24000);
+      assert.equal(sent.output_config.format.type, "json_schema");
+      return Response.json({ stop_reason: "end_turn", content: [{ type: "text", text: JSON.stringify({ message: "Délai modifié.", document: revised }) }] });
     });
     assert.deepEqual(reply.document, revised);
   });
@@ -110,11 +115,11 @@ test("CPS IA : erreurs, annulation, réponses tronquées et secrets non exposés
         assert.ok(!error.message.includes("secret-upstream-details")); return true;
       });
     }
-    for (const choice of [
-      { finish_reason: "length", message: { content: "{" } },
-      { finish_reason: "stop", message: { content: "invalid" } },
-      { finish_reason: "stop", message: { content: JSON.stringify({ message: "ok", document: {} }) } },
-    ]) await assert.rejects(() => generateCps(input(), undefined, async () => Response.json({ choices: [choice] })), errorStatus(502));
+    for (const response of [
+      { stop_reason: "max_tokens", content: [{ type: "text", text: "{" }] },
+      { stop_reason: "end_turn", content: [{ type: "text", text: "invalid" }] },
+      { stop_reason: "end_turn", content: [{ type: "text", text: JSON.stringify({ message: "ok", document: {} }) }] },
+    ]) await assert.rejects(() => generateCps(input(), undefined, async () => Response.json(response)), errorStatus(502));
     await assert.rejects(() => generateCps(input(), undefined, async () => { throw new DOMException("Timeout", "TimeoutError"); }), errorStatus(504));
     const controller = new AbortController(); controller.abort();
     await assert.rejects(() => generateCps(input(), controller.signal, async () => { throw new DOMException("Abort", "AbortError"); }), errorStatus(499));
