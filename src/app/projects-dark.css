@@ -1,0 +1,354 @@
+/* Project workspace and native dialogs share the application theme. */
+html[data-theme="dark"] .projects-sidebar,
+html[data-theme="dark"] .project-overview,
+html[data-theme="dark"] .project-workflow-panel,
+html[data-theme="dark"] .project-documents-panel,
+html[data-theme="dark"] .project-history-panel,
+html[data-theme="dark"] .project-dialog,
+html[data-theme="dark"] .project-dialog-heading {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .projects-count,
+html[data-theme="dark"] .project-document-icon,
+html[data-theme="dark"] .project-step-icon {
+  background: var(--surface-raised);
+  color: #b9d3bf;
+}
+
+html[data-theme="dark"] .projects-search,
+html[data-theme="dark"] .projects-storage-note,
+html[data-theme="dark"] .project-options,
+html[data-theme="dark"] .project-info {
+  background: var(--surface-soft);
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
+html[data-theme="dark"] .projects-search input {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: var(--text);
+}
+
+html[data-theme="dark"] .projects-search:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px #f8be1826;
+}
+
+html[data-theme="dark"] .projects-filters button,
+html[data-theme="dark"] .project-sidebar-empty,
+html[data-theme="dark"] .project-nav-title svg,
+html[data-theme="dark"] .project-nav-title > svg:last-child,
+html[data-theme="dark"] .project-nav-client,
+html[data-theme="dark"] .project-nav-status > span:last-child,
+html[data-theme="dark"] .project-reference,
+html[data-theme="dark"] .project-meta,
+html[data-theme="dark"] .project-progress-heading,
+html[data-theme="dark"] .project-panel-heading p,
+html[data-theme="dark"] .project-legend > span,
+html[data-theme="dark"] .project-step-number,
+html[data-theme="dark"] .project-step-documents,
+html[data-theme="dark"] .project-upload-limits,
+html[data-theme="dark"] .project-document-list span:not(.project-document-icon),
+html[data-theme="dark"] .project-document-list small,
+html[data-theme="dark"] .project-document-list .icon-button,
+html[data-theme="dark"] .project-documents-empty,
+html[data-theme="dark"] .project-documents-empty p,
+html[data-theme="dark"] .project-documents-empty span,
+html[data-theme="dark"] .project-history time,
+html[data-theme="dark"] .project-older-history summary,
+html[data-theme="dark"] .project-dialog-intro,
+html[data-theme="dark"] .project-dialog-heading .icon-button,
+html[data-theme="dark"] .project-requirements-settings > p,
+html[data-theme="dark"] .project-hint,
+html[data-theme="dark"] .project-options .check-label small {
+  color: var(--text-muted);
+}
+
+html[data-theme="dark"] .projects-filters button:hover,
+html[data-theme="dark"] .project-nav-item:hover {
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .projects-filters button[aria-pressed="true"] {
+  background: #35402c;
+  color: #e9d28c;
+}
+
+html[data-theme="dark"] .project-nav-item {
+  background: var(--surface);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .project-nav-item.is-selected {
+  background: #343326;
+  border-color: #746434;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+html[data-theme="dark"] .project-nav-status,
+html[data-theme="dark"] .project-required {
+  color: #f0ce77;
+}
+
+html[data-theme="dark"] .project-nav-status .is-done,
+html[data-theme="dark"] .project-panel-heading h3 > svg {
+  color: #a4d5ad;
+}
+
+html[data-theme="dark"] .project-nav-progress,
+html[data-theme="dark"] .project-progress-track {
+  background: #334740;
+}
+
+html[data-theme="dark"] .project-nav-progress > span,
+html[data-theme="dark"] .project-progress-track > span,
+html[data-theme="dark"] .project-legend i.completed {
+  background: #8bbe91;
+}
+
+html[data-theme="dark"] .project-progress-heading strong,
+html[data-theme="dark"] .project-step > strong,
+html[data-theme="dark"] .project-history p,
+html[data-theme="dark"] .project-requirements-settings summary,
+html[data-theme="dark"] .project-required-file-title strong,
+html[data-theme="dark"] .project-options .check-label {
+  color: var(--text);
+}
+
+html[data-theme="dark"] .project-status-badge,
+html[data-theme="dark"] .project-step-notice,
+html[data-theme="dark"] .project-reopen-confirm {
+  background: #3c3421;
+  border-color: #776138;
+  color: #f0ce77;
+}
+
+html[data-theme="dark"] .project-status-badge.is-complete,
+html[data-theme="dark"] .project-completed-banner,
+html[data-theme="dark"] .project-success,
+html[data-theme="dark"] .project-step-notice.ready {
+  background: #203a2f;
+  color: #b0e0b7;
+}
+
+html[data-theme="dark"] .project-completed-banner p {
+  color: #b7cbbb;
+}
+
+html[data-theme="dark"] .project-legend i {
+  background: #81938b;
+}
+
+html[data-theme="dark"] .project-legend i.current {
+  background: var(--accent);
+}
+
+html[data-theme="dark"] .project-step {
+  background: var(--surface-soft);
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
+html[data-theme="dark"] .project-step:hover {
+  border-color: #91a798;
+  box-shadow: 0 3px 14px #00000024;
+}
+
+html[data-theme="dark"] .project-step-item.current .project-step {
+  background: #3a3322;
+  border-color: #cda744;
+  box-shadow: 0 0 0 3px #f8be1817;
+}
+
+html[data-theme="dark"] .project-step-item.current .project-step-icon {
+  background: var(--accent);
+  color: #352a0a;
+}
+
+html[data-theme="dark"] .project-step-item.current .project-step > strong {
+  color: #ffe8a4;
+}
+
+html[data-theme="dark"] .project-step-item.current .project-step-status,
+html[data-theme="dark"] .project-step-item.current .project-step-number,
+html[data-theme="dark"] .project-step-item.current .project-step-documents {
+  color: #edce80;
+}
+
+html[data-theme="dark"] .project-step-item.completed .project-step {
+  background: #21372c;
+  border-color: #48694e;
+}
+
+html[data-theme="dark"] .project-step-item.completed .project-step-icon {
+  background: #35503b;
+  color: #c3e7b9;
+}
+
+html[data-theme="dark"] .project-step-item.completed .project-step > strong,
+html[data-theme="dark"] .project-step-item.completed .project-step-status {
+  color: #b5dca8;
+}
+
+html[data-theme="dark"] .project-step-item.skipped .project-step {
+  background: #19252a;
+  border-color: #526268;
+  color: var(--text-muted);
+}
+
+html[data-theme="dark"] .project-step-item.skipped .project-step > strong {
+  color: #b6c2ba;
+}
+
+html[data-theme="dark"] .project-step-connector {
+  color: #7b9187;
+}
+
+html[data-theme="dark"] .project-step-item.completed .project-step-connector {
+  color: #a4cc92;
+}
+
+html[data-theme="dark"] .project-next-action {
+  background: #2d3025;
+  border-color: #59583a;
+}
+
+html[data-theme="dark"] .project-next-icon {
+  background: #45422a;
+  color: #f0ce77;
+}
+
+html[data-theme="dark"] .project-next-action span {
+  color: #e5cb7c;
+}
+
+html[data-theme="dark"] .project-next-action p {
+  color: #c4c8b4;
+}
+
+html[data-theme="dark"] .project-document-list > li,
+html[data-theme="dark"] .project-requirements-settings,
+html[data-theme="dark"] .project-dialog-actions {
+  border-color: var(--border);
+}
+
+html[data-theme="dark"] .project-document-list .project-remove-document:hover {
+  background: #472c2a;
+  color: #ffb5a3;
+}
+
+html[data-theme="dark"] .project-history > li:not(:last-child)::before {
+  background: var(--border);
+}
+
+html[data-theme="dark"] .project-history > li > svg {
+  color: #a2c590;
+  fill: #a2c590;
+}
+
+html[data-theme="dark"] .project-empty-state {
+  background: linear-gradient(145deg, #1c302c, #15252a);
+  border-color: var(--border);
+  color: #b2c6ae;
+}
+
+html[data-theme="dark"] .project-empty-icon {
+  background: var(--surface-raised);
+  border-color: #4a6050;
+  box-shadow: 7px 8px 0 #12201d;
+  color: #b7d6aa;
+}
+
+html[data-theme="dark"] .project-empty-state .eyebrow,
+html[data-theme="dark"] .project-empty-state > p,
+html[data-theme="dark"] .project-empty-journey svg {
+  color: #b1c7af;
+}
+
+html[data-theme="dark"] .project-empty-state h2 {
+  color: var(--text);
+}
+
+html[data-theme="dark"] .project-empty-journey span {
+  background: #243830;
+  border-color: #4b6250;
+  color: #c6dcc0;
+}
+
+html[data-theme="dark"] .project-error {
+  background: #472c2a;
+  border-color: #80544d;
+  color: #ffb5a3;
+}
+
+html[data-theme="dark"] .project-dialog {
+  box-shadow: 0 24px 100px #00000080;
+}
+
+html[data-theme="dark"] .project-dialog::backdrop {
+  background: #070f13d9;
+  opacity: 1;
+}
+
+html[data-theme="dark"] .project-dialog-actions .project-text-button {
+  color: #ebc985;
+}
+
+html[data-theme="dark"] .project-generation-action .secondary-button {
+  background: #243a2e;
+  border-color: #52734b;
+  color: #cae5bd;
+}
+
+html[data-theme="dark"] .project-generation-action .secondary-button:hover {
+  background: #2e4a37;
+}
+
+html[data-theme="dark"] .project-required-file {
+  border-color: var(--border);
+}
+
+html[data-theme="dark"] .project-required-file.is-missing {
+  background: #302d21;
+  border-color: #77643a;
+}
+
+html[data-theme="dark"] .project-required-file.is-present {
+  background: #1d3229;
+  border-color: #46674b;
+}
+
+html[data-theme="dark"] .project-required-file-title {
+  color: #bdcaa9;
+}
+
+html[data-theme="dark"] .project-required-file-title > span {
+  color: #edce80;
+}
+
+html[data-theme="dark"] .project-required-file.is-present .project-required-file-title > svg,
+html[data-theme="dark"] .project-required-file.is-present .project-required-file-title > span {
+  color: #b2df9d;
+}
+
+html[data-theme="dark"] .project-required-file .project-upload-button {
+  background: var(--surface-soft);
+  border-color: #768773;
+  color: var(--text);
+}
+
+html[data-theme="dark"] .project-required-file .project-upload-button:hover,
+html[data-theme="dark"] .project-attached-file:hover {
+  background: #304938;
+}
+
+html[data-theme="dark"] .project-attached-file {
+  background: #294032;
+  color: #c1deb4;
+}

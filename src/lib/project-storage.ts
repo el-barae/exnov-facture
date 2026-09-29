@@ -1,127 +1,131 @@
-import { applyProjectAction, createProject, projectDocumentSchema, projectSchema, validateProjectFile, type CivilProject, type DocumentKind, type ProjectAction, type ProjectDetails } from "./projects";
+import * as local from "./project-storage-local";
+import { configureWorkspaceStorage } from "./client-storage";
+import { createProjectPlanFile, isEditableProjectPlan, parseProjectPlanFile, loadedProjectPlan, type LoadedProjectPlan, type ProjectPlanSource } from "./cad/project";
+import type { CadPlan } from "./cad/types";
+import { parsePlan } from "./cad/validation";
+import { validateProjectFile, type CivilProject, type DocumentKind, type ProjectAction, type ProjectDetails } from "./projects";
 
-const DATABASE = "exnov.projets.v1";
-export const PROJECTS_CHANGED_EVENT = "exnov:projects-changed";
-let databasePromise: Promise<IDBDatabase> | undefined;
-
-function database(): Promise<IDBDatabase> {
-  if (!databasePromise) {
-    databasePromise = new Promise<IDBDatabase>((resolve, reject) => {
-      if (typeof indexedDB === "undefined") { reject(new Error("Le stockage des projets est indisponible dans ce navigateur.")); return; }
-      const request = indexedDB.open(DATABASE, 1);
-      request.onupgradeneeded = () => {
-        request.result.createObjectStore("projects", { keyPath: "id" });
-        const files = request.result.createObjectStore("files", { keyPath: "id" });
-        files.createIndex("projectId", "projectId");
-      };
-      request.onsuccess = () => {
-        const db = request.result;
-        db.onversionchange = () => { db.close(); databasePromise = undefined; };
-        resolve(db);
-      };
-      request.onerror = () => reject(new Error("Impossible d’ouvrir le stockage des projets. Vérifiez les autorisations du navigateur."));
-      request.onblocked = () => reject(new Error("Fermez les autres onglets EXNOV puis réessayez pour ouvrir les projets."));
-    }).catch(error => { databasePromise = undefined; throw error; });
-  }
-  return databasePromise;
+let mode: "team" | "demo" = "team";
+export const PROJECTS_CHANGED_EVENT = local.PROJECTS_CHANGED_EVENT;
+export function configureProjectStorage(next: "team" | "demo", userId?: string) { mode = next; configureWorkspaceStorage(next, userId); }
+export function isTeamStorage() { return mode === "team"; }
+async function responseJson<T>(response: Response): Promise<T> {
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || "Impossible de communiquer avec l’espace équipe.");
+  return result as T;
 }
-
-function storageError(error: DOMException | null) {
-  return error?.name === "QuotaExceededError"
-    ? new Error("Le stockage du navigateur est plein. Libérez de l’espace puis réessayez. Aucune modification n’a été enregistrée.")
-    : new Error("L’enregistrement a échoué. Vérifiez le stockage du navigateur puis réessayez.");
+async function request<T>(path: string, method = "GET", data?: unknown): Promise<T> {
+  return responseJson<T>(await fetch(path, { method, credentials: "same-origin", cache: "no-store", headers: data === undefined ? undefined : { "Content-Type": "application/json" }, body: data === undefined ? undefined : JSON.stringify(data) }));
 }
-function announceChange() {
-  window.dispatchEvent(new Event(PROJECTS_CHANGED_EVENT));
-  if (typeof BroadcastChannel !== "undefined") {
-    const channel = new BroadcastChannel(DATABASE);
-    channel.postMessage("changed");
-    channel.close();
-  }
-}
+function announceChange() { window.dispatchEvent(new Event(PROJECTS_CHANGED_EVENT)); }
 export function subscribeToProjectChanges(refresh: () => void) {
+  if (mode === "demo") return local.subscribeToProjectChanges(refresh);
+  const visibleRefresh = () => { if (document.visibilityState === "visible") refresh(); };
+  const timer = window.setInterval(visibleRefresh, 15_000);
   window.addEventListener(PROJECTS_CHANGED_EVENT, refresh);
-  const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel(DATABASE) : undefined;
-  if (channel) channel.onmessage = refresh;
-  return () => { window.removeEventListener(PROJECTS_CHANGED_EVENT, refresh); channel?.close(); };
+  window.addEventListener("focus", visibleRefresh);
+  return () => { clearInterval(timer); window.removeEventListener(PROJECTS_CHANGED_EVENT, refresh); window.removeEventListener("focus", visibleRefresh); };
 }
-
 export async function loadProjects(): Promise<CivilProject[]> {
-  const db = await database();
-  return new Promise((resolve, reject) => {
-    const request = db.transaction("projects", "readonly").objectStore("projects").getAll();
-    request.onsuccess = () => {
-      try { resolve(request.result.map(value => projectSchema.parse(value)).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))); }
-      catch { reject(new Error("Un dossier enregistré est illisible. Les données existantes ont été conservées.")); }
-    };
-    request.onerror = () => reject(new Error("Impossible de charger les projets enregistrés."));
-  });
+  return mode === "demo" ? local.loadProjects() : (await request<{ projects: CivilProject[] }>("/api/projects")).projects;
 }
-
 export async function storeNewProject(details: ProjectDetails): Promise<CivilProject> {
-  const project = createProject(details);
-  const db = await database();
-  await new Promise<void>((resolve, reject) => {
-    const transaction = db.transaction("projects", "readwrite");
-    transaction.objectStore("projects").add(project);
-    transaction.oncomplete = () => resolve();
-    transaction.onabort = () => reject(storageError(transaction.error));
-  });
-  announceChange();
-  return project;
+  if (mode === "demo") return local.storeNewProject(details);
+  const { project } = await request<{ project: CivilProject }>("/api/projects", "POST", details); announceChange(); return project;
 }
-
 export async function updateStoredProject(expected: CivilProject, action: ProjectAction, file?: File): Promise<CivilProject> {
-  if (action.type === "attach") {
-    if (!file) throw new Error("Le fichier doit être fourni pour enregistrer le document.");
-    validateProjectFile(file);
-    if (action.document.size !== file.size || action.document.name !== file.name) throw new Error("Le fichier ne correspond pas au document.");
+  if (mode === "demo") return local.updateStoredProject(expected, action, file);
+  if (action.type === "attach" || action.type === "replacePlan") {
+    if (!file) throw new Error("Le fichier est requis.");
+    return uploadFile(expected.id, action.document.kind, file, { expectedRevision: expected.revision, ...(action.type === "replacePlan" ? { replaceDocumentId: action.document.id, expectedDocumentRevision: action.expectedDocumentRevision } : {}) });
   }
-  const db = await database();
-  const project = await new Promise<CivilProject>((resolve, reject) => {
-    const transaction = db.transaction(["projects", "files"], "readwrite");
-    let result: CivilProject;
-    let failure: Error | undefined;
-    const projects = transaction.objectStore("projects");
-    const files = transaction.objectStore("files");
-    const request = projects.get(expected.id);
-    request.onsuccess = () => {
-      try {
-        const current = projectSchema.parse(request.result);
-        if (current.revision !== expected.revision) throw new Error("Ce projet a changé dans un autre onglet. Le dossier a été actualisé ; réessayez votre action.");
-        result = applyProjectAction(current, action);
-        // Le fichier et sa référence sont enregistrés dans la même transaction.
-        if (action.type === "attach") files.add({ id: action.document.id, projectId: current.id, blob: file });
-        if (action.type === "removeDocument") files.delete(action.documentId);
-        projects.put(result);
-      } catch (error) {
-        failure = error instanceof DOMException && error.name === "QuotaExceededError" ? storageError(error) : error instanceof Error ? error : new Error("Impossible de modifier le projet.");
-        transaction.abort();
-      }
-    };
-    transaction.oncomplete = () => resolve(result);
-    transaction.onabort = () => reject(failure || storageError(transaction.error));
-  });
-  announceChange();
-  return project;
+  const { project } = await request<{ project: CivilProject }>(`/api/projects/${expected.id}`, "PATCH", { revision: expected.revision, action }); announceChange(); return project;
 }
-
-export function attachProjectFile(project: CivilProject, kind: DocumentKind, file: File) {
+type UploadOptions = { expectedRevision?: number; replaceDocumentId?: string; expectedDocumentRevision?: number; importDocumentId?: string };
+async function uploadFile(projectId: string, kind: DocumentKind, file: File, options: UploadOptions = {}): Promise<CivilProject> {
   validateProjectFile(file);
-  const document = projectDocumentSchema.parse({ id: crypto.randomUUID(), kind, name: file.name, size: file.size, mime: file.type, uploadedAt: new Date().toISOString() });
-  return updateStoredProject(project, { type: "attach", document }, file);
+  if (isEditableProjectPlan({ kind, name: file.name })) await parseProjectPlanFile(file);
+  const base = `/api/projects/${projectId}/uploads`;
+  const { upload } = await request<{ upload: { id: string; chunkSize: number } }>(base, "POST", { kind, name: file.name, size: file.size, mime: file.type, ...options });
+  const endpoint = `${base}/${upload.id}`;
+  try {
+    for (let offset = 0; offset < file.size; offset += upload.chunkSize) {
+      await responseJson(await fetch(`${endpoint}?offset=${offset}`, { method: "PUT", credentials: "same-origin", headers: { "Content-Type": "application/octet-stream" }, body: file.slice(offset, offset + upload.chunkSize) }));
+    }
+    const { project } = await request<{ project: CivilProject }>(endpoint, "POST"); announceChange(); return project;
+  } catch (error) {
+    await request(endpoint, "DELETE").catch(() => {});
+    throw error;
+  }
+}
+export function attachProjectFile(project: CivilProject, kind: DocumentKind, file: File) {
+  return mode === "demo" ? local.attachProjectFile(project, kind, file) : uploadFile(project.id, kind, file, { expectedRevision: project.revision });
+}
+export function attachGeneratedProjectFile(projectId: string, kind: DocumentKind, file: File) {
+  return mode === "demo" ? local.attachGeneratedProjectFile(projectId, kind, file) : uploadFile(projectId, kind, file);
+}
+export async function getProjectFile(projectId: string, documentId: string): Promise<Blob> {
+  if (mode === "demo") return local.getProjectFile(projectId, documentId);
+  const response = await fetch(`/api/projects/${projectId}/documents/${documentId}`, { credentials: "same-origin", cache: "no-store" });
+  if (!response.ok) await responseJson(response);
+  return response.blob();
+}
+export async function loadProjectPlan(projectId: string, documentId: string): Promise<LoadedProjectPlan> {
+  return mode === "demo" ? local.loadProjectPlan(projectId, documentId) : (await request<{ document: LoadedProjectPlan }>(`/api/projects/${projectId}/documents/${documentId}/plan`)).document;
+}
+export async function saveProjectPlan(source: ProjectPlanSource, plan: CadPlan): Promise<LoadedProjectPlan> {
+  if (mode === "demo") return local.saveProjectPlan(source, plan);
+  const valid = parsePlan({ ...plan, id: source.planId });
+  const file = createProjectPlanFile(valid, source.fileName);
+  const project = await uploadFile(source.projectId, "plans", file, { replaceDocumentId: source.documentId, expectedDocumentRevision: source.revision });
+  return loadedProjectPlan(project, project.documents.find(doc => doc.id === source.documentId)!, valid);
+}
+export async function createProjectPlan(projectId: string, plan: CadPlan): Promise<LoadedProjectPlan> {
+  if (mode === "demo") return local.createProjectPlan(projectId, plan);
+  const valid = parsePlan(plan);
+  const project = await uploadFile(projectId, "plans", createProjectPlanFile(valid));
+  return loadedProjectPlan(project, project.documents.at(-1)!, valid);
 }
 
-export async function getProjectFile(projectId: string, documentId: string): Promise<Blob> {
-  const db = await database();
-  return new Promise((resolve, reject) => {
-    const request = db.transaction("files", "readonly").objectStore("files").get(documentId);
-    request.onsuccess = () => {
-      const record = request.result;
-      if (!record || record.projectId !== projectId || !(record.blob instanceof Blob)) {
-        reject(new Error("Le fichier est introuvable dans ce navigateur."));
-      } else resolve(record.blob);
-    };
-    request.onerror = () => reject(new Error("Impossible de récupérer ce document."));
-  });
+export type LocalProjectImportProgress = {
+  phase: "preparing" | "uploading" | "finalizing" | "complete";
+  completed: number;
+  total: number;
+  fileName?: string;
+};
+
+/** Read only after the user chooses to look for projects on this browser. */
+export function listLocalProjectsForImport(): Promise<CivilProject[]> {
+  return local.loadProjects();
+}
+
+/** A retry resumes the server copy; the local project and its files remain intact. */
+export async function importLocalProject(source: CivilProject, onProgress?: (progress: LocalProjectImportProgress) => void): Promise<CivilProject> {
+  if (mode !== "team") throw new Error("Connectez-vous à l’espace équipe pour importer ce dossier.");
+  const total = source.documents.length;
+  onProgress?.({ phase: "preparing", completed: 0, total });
+  const imported = await request<{ project: CivilProject; completed: boolean }>("/api/projects/import", "POST", source);
+  if (imported.completed) {
+    onProgress?.({ phase: "complete", completed: total, total });
+    announceChange();
+    return imported.project;
+  }
+  let project = imported.project;
+  const existing = new Set(project.documents.map(document => document.id));
+  let completed = source.documents.filter(document => existing.has(document.id)).length;
+  for (const document of source.documents) {
+    if (existing.has(document.id)) continue;
+    onProgress?.({ phase: "uploading", completed, total, fileName: document.name });
+    const blob = await local.getProjectFile(source.id, document.id);
+    if (blob.size !== document.size) throw new Error(`Le fichier local « ${document.name} » ne correspond plus au dossier. Actualisez la liste avant de réessayer.`);
+    const file = new File([blob], document.name, { type: document.mime || blob.type, lastModified: Date.parse(document.uploadedAt) });
+    project = await uploadFile(project.id, document.kind, file, { importDocumentId: document.id });
+    completed += 1;
+    onProgress?.({ phase: "uploading", completed, total, fileName: document.name });
+  }
+  onProgress?.({ phase: "finalizing", completed, total });
+  const result = await request<{ project: CivilProject }>(`/api/projects/import/${encodeURIComponent(source.id)}`, "POST");
+  onProgress?.({ phase: "complete", completed: total, total });
+  announceChange();
+  return result.project;
 }

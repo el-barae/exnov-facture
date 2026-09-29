@@ -1,0 +1,80 @@
+.team-workspace { max-width: 1400px; }
+.team-workspace .page-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.team-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
+.team-panel { padding: 22px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; color: var(--text); }
+.team-panel h2, .team-panel h3 { display: flex; align-items: center; gap: 9px; font-size: 18px; margin: 0 0 16px; }
+.team-panel h4 { margin: 0; font-size: 15px; }
+.team-panel p { font-size: 14px; line-height: 1.6; }
+.team-permission-note { display: flex; gap: 12px; padding: 18px; margin: 0 0 24px; border: 1px solid var(--border); background: var(--surface-soft); border-radius: 12px; color: var(--text-muted); font-size: 14px; line-height: 1.65; }
+.team-permission-note svg { flex-shrink: 0; margin-top: 3px; }
+.team-member-form { margin-bottom: 24px; }
+.team-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-bottom: 18px; }
+.team-panel .field-label { display: flex; flex-direction: column; gap: 8px; margin: 0; font-size: 13px; }
+.team-panel .field-label input, .team-panel .field-label select, .team-panel .field-label textarea { min-height: 40px; width: 100%; box-sizing: border-box; padding: 10px 12px; font: inherit; border: 1px solid var(--border); background: var(--surface-soft); color: var(--text); border-radius: 8px; }
+.team-panel .field-label textarea { resize: vertical; }
+.team-panel .field-label small { color: var(--text-muted); font-weight: 400; line-height: 1.5; }
+.team-member-list, .team-task-list { padding: 0; margin: 0; list-style: none; }
+.team-member-list > li, .team-task-list > li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; border-top: 1px solid var(--border); }
+.team-member-identity { display: flex; flex-direction: column; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
+.team-member-identity strong { font-size: 15px; }
+.team-member-identity span { font-size: 13px; color: var(--text-muted); }
+.team-member-controls, .team-task-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.team-member-controls select { max-width: 240px; }
+.team-active { color: #19744a; }
+.team-inactive { color: var(--text-muted); }
+html[data-theme="dark"] .team-active { color: #87d2a8; }
+.team-role-badge { padding: 8px 12px; font-size: 13px; background: var(--surface-soft); border-radius: 8px; }
+.team-password-form { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; padding: 16px; background: var(--surface-soft); border-radius: 10px; width: 100%; }
+.team-password-form .field-label { flex: 1; min-width: min(100%, 220px); }
+.team-task-form { display: grid; gap: 16px; padding: 18px; margin: 16px 0; background: var(--surface-soft); border: 1px solid var(--border); border-radius: 12px; }
+.team-task-form .team-form-grid { margin: 0; }
+.team-task-info { flex: 1; min-width: min(240px, 100%); }
+.team-task-info strong { font-size: 15px; overflow-wrap: anywhere; }
+.team-task-info p { margin: 6px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.team-task-meta { display: flex; flex-wrap: wrap; gap: 14px; color: var(--text-muted); font-size: 12px; margin-top: 8px; }
+.team-task-list .is-done > .team-task-info > strong { color: var(--text-muted); }
+.team-empty { color: var(--text-muted); margin: 16px 0 0; }
+.project-bottom-grid.is-technician { grid-template-columns: minmax(0, 1fr); }
+.team-project-tools { margin: 20px 0; }
+.team-setup { flex-direction: column; gap: 18px; text-align: center; padding: 32px; }
+.team-setup h1 { font-size: 26px; }
+.team-setup p { max-width: 560px; line-height: 1.7; }
+.team-session-error { max-width: 1200px; margin: 16px auto; }
+@media (max-width: 760px) {
+  .team-workspace .page-heading { align-items: flex-start; flex-direction: column; }
+  .team-panel { padding: 16px; }
+  .team-form-grid { grid-template-columns: 1fr; }
+  .team-member-controls, .team-task-controls { width: 100%; }
+  .team-member-controls .field-label, .team-task-controls .field-label { flex: 1; }
+  .team-member-controls select { max-width: none; }
+}
+
+.local-project-import { margin-bottom: 24px; }
+.local-import-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+.local-import-heading h2 { font-size: 16px; margin-bottom: 7px; }
+.local-import-heading p { margin: 0; color: var(--text-muted); }
+.local-import-selection { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 18px; padding-top: 20px; margin-top: 20px; border-top: 1px solid var(--border); }
+.local-import-selection .field-label { flex: 1; min-width: min(260px, 100%); }
+.local-import-summary { display: flex; flex-direction: column; gap: 6px; padding-bottom: 4px; min-width: 0; overflow-wrap: anywhere; font-size: 13px; }
+.local-import-summary span { color: var(--text-muted); }
+.local-import-progress { margin-top: 20px; font-size: 13px; overflow-wrap: anywhere; }
+.local-import-progress label { display: grid; gap: 12px; }
+.local-import-progress progress { width: 100%; height: 10px; accent-color: var(--accent); }
+.local-import-progress p { color: var(--text-muted); margin-bottom: 0; }
+.local-project-import .project-error, .local-project-import .project-success { margin-top: 16px; }
+@media (max-width: 540px) {
+  .local-import-selection { align-items: stretch; flex-direction: column; }
+  .local-import-heading > button, .local-import-selection > button { width: 100%; }
+}
+
+/* Formulaires et suivi des tâches dans les fenêtres des étapes. */
+.project-dialog .team-task-form { padding: 0; margin: 0; border: 0; background: transparent; }
+.project-dialog .team-task-form .field-label { margin-bottom: 0; }
+.project-dialog .team-task-form .project-dialog-actions { margin-top: 4px; }
+.project-dialog .team-task-info { min-width: 0; flex-basis: 100%; }
+.project-dialog .team-task-info p { font-size: 12px; line-height: 1.6; }
+.project-dialog .team-task-controls { width: 100%; }
+.project-dialog .team-task-controls .field-label { margin: 0; flex: 1; }
+.task-project-context { overflow-wrap: anywhere; }
+.task-project-context span { color: var(--text-muted); }
+.task-dialog-actions { justify-content: flex-end; margin-bottom: 16px; }

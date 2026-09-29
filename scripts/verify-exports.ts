@@ -4,6 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
+import { login } from "./helpers/login";
 import { exampleInvoice } from "../src/lib/invoice";
 import { STORAGE_KEY } from "../src/lib/storage";
 
@@ -35,7 +36,8 @@ try {
   await page.setViewport({ width: 1440, height: 1100, deviceScaleFactor: 1 });
   const errors: string[] = [];
   page.on("pageerror", e => errors.push(String(e)));
-  await page.goto(origin, { waitUntil: "networkidle0" });
+  await login(page, origin);
+  await page.goto(`${origin}/?service=factures`, { waitUntil: "networkidle0" });
   await page.waitForFunction(() => !(document.querySelector("fieldset") as HTMLFieldSetElement)?.disabled);
   await page.evaluate(() => { (Array.from(document.querySelectorAll("button")).find(b => b.textContent?.includes("Charger l’exemple")) as HTMLButtonElement).click(); });
   await page.waitForFunction(() => (document.querySelector('[name="numero"]') as HTMLInputElement).value === "13");

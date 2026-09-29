@@ -28,7 +28,7 @@ La génération peut prendre plusieurs minutes. La route déclare une durée max
 
 Limites : prompt de 16 000 caractères ; 60 articles administratifs ; 24 lots de 20 articles ; 150 postes ; requêtes limitées à 3,5 Mo. Logo PNG normalisé de 700 Ko maximum. Les routes valident le schéma des textes et les caractéristiques du logo. Le contenu est échappé dans le Word, sans HTML incorporé, macros ni liens externes. Aucune dépendance supplémentaire n’est nécessaire : le package OOXML est assemblé avec `pizzip` déjà présent.
 
-Le texte et le CPS courant sont transmis à AWS lors de la génération. Le logo reste dans le navigateur jusqu’à l’export Word, puis est traité en mémoire côté serveur. Aucun document n’est sauvegardé côté serveur. L’état survit au changement de service dans la page, mais pas à un rechargement : télécharger le Word avant de quitter.
+Le texte et le CPS courant sont transmis à AWS lors de la génération. Le logo reste dans le navigateur jusqu’à l’export Word, puis est traité en mémoire côté serveur. L’export seul ne conserve pas le document. L’état survit au changement de service dans la page, mais pas à un rechargement : télécharger le Word ou utiliser **Enregistrer dans ce projet** avant de quitter. Cette action conserve le Word dans Drive avec une référence dans Neon en mode équipe, ou dans IndexedDB en démonstration, accessible depuis **Voir le projet**. L’IA nécessite un rôle administrateur, gérant/chef de projets ou technicien Pro ; le contrôle est également effectué par les API.
 
 ## Vérification
 

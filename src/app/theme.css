@@ -1,0 +1,112 @@
+:root {
+  --surface: #fff;
+  --surface-raised: #f1f4f0;
+  --surface-soft: #f6f7f5;
+  --border: #dce3dd;
+  --text: #283d43;
+  --text-muted: #748187;
+  --accent: #f8be18;
+}
+.theme-toggle { width: 38px; height: 38px; flex-shrink: 0; border: 1px solid var(--border); border-radius: 9px; color: var(--text); background: var(--surface); }
+.theme-toggle:hover { background: var(--surface-raised); border-color: #a18c46; }
+.login-topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 26px; }
+.login-topbar .login-brand { margin-bottom: 0; min-width: 0; }
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --surface: #18272d;
+  --surface-raised: #20333a;
+  --surface-soft: #122127;
+  --border: #34484e;
+  --text: #edf3f1;
+  --text-muted: #b0c0bd;
+  --ink: var(--text);
+  --muted: var(--text-muted);
+  scrollbar-color: #536b73 #122127;
+}
+html[data-theme="dark"] body { background: #0e191e; color: var(--text); }
+html[data-theme="dark"] ::selection { background: #f8be1840; color: #fff; }
+html[data-theme="dark"] :is(.app-header, .form-section, .export-panel, .totals-strip, .preview-toolbar, .report-chat, .report-composer, .report-feedback, .cps-preview-toolbar, .login-layout) {
+  background: var(--surface); border-color: var(--border); color: var(--text);
+}
+html[data-theme="dark"] :is(.header-logo, .login-brand img) { background: #fff; border-radius: 5px; }
+html[data-theme="dark"] :is(.header-divider) { background: var(--border); }
+html[data-theme="dark"] :is(.avatar, .service-switch, .service-card, .section-icon, .preview-panel, .report-empty-preview, .cps-preview-column, .cps-logo-upload, .cps-export) {
+  background: var(--surface-soft); border-color: var(--border); color: var(--text);
+}
+html[data-theme="dark"] .service-switch button { color: var(--text-muted); }
+html[data-theme="dark"] .service-switch button[aria-pressed=true] { background: var(--surface-raised); color: var(--text); box-shadow: 0 1px 5px #0003; }
+html[data-theme="dark"] .service-switch button[aria-pressed=true] svg { color: var(--accent); }
+html[data-theme="dark"] :is(.company-location, .logout-button, .breadcrumb, .eyebrow, .page-heading p, .example-button, .label-hint, .input-affix>span, .check-label small, .privacy-note, .totals-strip span, .totals-strip small, .preview-details, .preview-caption, .export-panel p, .help-note, .app-footer) { color: var(--text-muted); }
+html[data-theme="dark"] :is(.breadcrumb strong, .field-label) { color: var(--text); }
+html[data-theme="dark"] :is(.field-label input, .field-label textarea, .field-label select, .rate input, .report-composer textarea, .login-input input) { background: var(--surface-soft); border-color: var(--border); color: var(--text); }
+html[data-theme="dark"] :is(input, textarea)::placeholder { color: #94a7a7; }
+html[data-theme="dark"] :is(input, textarea, select):focus-visible { border-color: var(--accent); box-shadow: 0 0 0 3px #f8be1826; }
+html[data-theme="dark"] .rate input:disabled { background: var(--surface-raised); color: var(--text-muted); }
+html[data-theme="dark"] .check-label input { accent-color: var(--accent); }
+html[data-theme="dark"] :is(.tax-row, .totals-strip>div+div, .app-footer, .report-chat-heading, .report-composer) { border-color: var(--border); }
+html[data-theme="dark"] .totals-strip .payable { background: #343020; }
+html[data-theme="dark"] .payable span { color: #ead38b; }
+html[data-theme="dark"] .primary-button { background: var(--accent); border-color: var(--accent); color: #17262b; box-shadow: 0 3px 8px #0003; }
+html[data-theme="dark"] .primary-button:hover { background: #ffcf43; border-color: #ffcf43; }
+html[data-theme="dark"] .primary-button svg { color: inherit; }
+html[data-theme="dark"] :is(.secondary-button, .add-button) { background: var(--surface); border-color: var(--border); color: var(--text); }
+html[data-theme="dark"] :is(.secondary-button, .add-button):hover { background: var(--surface-raised); border-color: #627c80; }
+html[data-theme="dark"] .icon-button:hover { background: var(--surface-raised); }
+html[data-theme="dark"] .preview-scroll { scrollbar-color: #536b73 transparent; }
+html[data-theme="dark"] .preview-expanded { box-shadow: 0 0 0 100vmax #050c10cc; }
+
+/* Les utilitaires présents dans les formulaires conservent un contraste lisible. */
+html[data-theme="dark"] :is(.text-slate-300, .text-slate-400, .text-slate-500) { color: var(--text-muted); }
+html[data-theme="dark"] :is(.border-slate-200, [class~="border-slate-200/70"]) { border-color: var(--border); }
+html[data-theme="dark"] .bg-slate-50 { background: var(--surface-soft); }
+html[data-theme="dark"] .text-amber-800 { color: #f3d78a; }
+html[data-theme="dark"] .icon-button[class~="hover:text-red-700"]:hover { color: #ffb4a4; }
+html[data-theme="dark"] :is(.report-error, .export-panel .error-message, .bg-red-50) { background: #41272a; border-color: #754349; color: #ffc0b5; }
+html[data-theme="dark"] :is(.report-status, .export-panel .status-message) { color: #9ed9aa; }
+
+/* Connexion. */
+html[data-theme="dark"] .login-layout { box-shadow: 0 12px 50px #0002; }
+html[data-theme="dark"] .login-brand>span { border-color: var(--border); }
+html[data-theme="dark"] :is(.login-brand small, .login-subtitle, .login-input>svg, .login-password-toggle, .login-footer) { color: var(--text-muted); }
+html[data-theme="dark"] .login-intro { background: #20353c; }
+html[data-theme="dark"] .login-icon { background: #3a3320; color: #f3d78a; }
+html[data-theme="dark"] .login-demo-note { background: #2c2b22; border-color: #4c4935; color: #d1cdb3; }
+html[data-theme="dark"] .login-demo-note strong { color: #f3d78a; }
+
+/* Rapports IA. */
+html[data-theme="dark"] :is(.report-chat-heading p, .report-welcome>p, .report-message>span, .report-thinking, .report-thinking small, .report-composer-actions .secondary-button>span, .report-upload-hint, .report-preview-label, .report-preview-label span:last-child, .report-empty-preview>p, .report-style-swatch span, .report-prompt-meta) { color: var(--text-muted); }
+html[data-theme="dark"] :is(.report-suggestions button, .report-message, .report-attachment, .report-revisions button) { background: var(--surface-raised); border-color: var(--border); color: var(--text); }
+html[data-theme="dark"] :is(.report-suggestions button, .report-revisions button):hover { background: #2b424a; border-color: #627c80; }
+html[data-theme="dark"] .report-suggestions button span:first-child { color: #f3d78a; }
+html[data-theme="dark"] .report-suggestions button span:last-child { color: var(--text-muted); }
+html[data-theme="dark"] .report-message.user { background: #344c55; color: var(--text); }
+html[data-theme="dark"] .report-attachment button { background: var(--surface-raised); border-color: var(--surface); }
+html[data-theme="dark"] .report-ai-badge { background: #343020; border-color: #61532b; color: #f3d78a; }
+html[data-theme="dark"] .report-limit { color: #f3d78a; }
+html[data-theme="dark"] .report-paper-icon { box-shadow: 9px 10px 0 #263c42; }
+
+/* Atelier CPS : les outils changent de thème, la feuille reste un document clair. */
+html[data-theme="dark"] :is(.cps-form-heading p, .cps-logo-upload>button, .cps-logo-upload span, .cps-logo-upload.has-logo>div button, .cps-prompt-meta button, .cps-prompt-meta span, .cps-field-help, .cps-progress small, .cps-export p, .cps-reference-info, .cps-preview-toolbar small, .cps-empty>p, .cps-empty li, .cps-preview-note) { color: var(--text-muted); }
+html[data-theme="dark"] :is(.cps-reference-info summary, .cps-empty h2) { color: var(--text); }
+html[data-theme="dark"] .cps-progress { background: #343020; color: #f3d78a; }
+html[data-theme="dark"] .cps-empty { background: radial-gradient(ellipse at 50% 35%, #20333a 0%, #122127 65%); }
+html[data-theme="dark"] :is(.cps-empty ol, .cps-empty li) { border-color: var(--border); }
+html[data-theme="dark"] .cps-empty li span { color: #f3d78a; }
+html[data-theme="dark"] .cps-mini-document { box-shadow: 10px 11px 0 #263c42; }
+.paper-shadow, .cps-paper { color-scheme: light; }
+
+@media(max-width:800px) {
+  .app-header { height: auto; min-height: 116px; }
+  .header-inner { flex-wrap: wrap; padding-top: 12px; padding-bottom: 12px; gap: 12px; }
+  .header-divider { display: none; }
+  .service-switch { order: 3; width: 100%; }
+  .service-switch button { flex: 1; }
+}
+@media(max-width:480px) {
+  .login-topbar { gap: 12px; margin-bottom: 22px; }
+  .login-topbar .login-brand { gap: 10px; }
+  .login-topbar .login-brand img { width: 60px; }
+  .login-topbar .login-brand>span { padding-left: 10px; font-size: 8px; letter-spacing: 1px; }
+  .login-topbar .login-brand small { font-size: 10px; }
+}

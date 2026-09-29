@@ -1,3 +1,4 @@
+import { protectApi } from "@/lib/server/team-access";
 import { cpsExportSchema, cpsFilename } from "@/lib/cps";
 import { cpsError, parseCpsRequest } from "@/lib/server/cps-request";
 import { generateCpsWord } from "@/lib/server/cps-word";
@@ -5,6 +6,8 @@ import { generateCpsWord } from "@/lib/server/cps-word";
 export const runtime = "nodejs";
 export const maxDuration = 30;
 export async function POST(request: Request) {
+  const denied = await protectApi(request, "export");
+  if (denied) return denied;
   try {
     const { document, logo } = await parseCpsRequest(request, cpsExportSchema);
     return new Response(new Uint8Array(generateCpsWord(document, logo)), { headers: {

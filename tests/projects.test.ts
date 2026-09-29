@@ -35,13 +35,13 @@ test("Des documents fournis en avance sont réutilisés, et le parcours atteint 
   assert.equal(currentProjectStep(project), undefined);
   assert.equal(projectProgress(project), 100);
   assert.deepEqual(project.documents.map(doc => doc.id), documentIds);
-  assert.equal(project.history.filter(event => event.message.startsWith("Étape validée")).length, 8);
+  assert.equal(project.history.filter(event => event.message.startsWith("Étape validée")).length, 9);
   assert.throws(() => complete(project, "facturation"), /une seule fois/);
 });
 
-test("Sans BDP le parcours a sept étapes, sans blocage sur les documents de chiffrage", () => {
+test("Sans BDP le parcours a huit étapes, sans blocage sur les documents de chiffrage", () => {
   let project = createProject({ ...details, withBdp: false });
-  assert.equal(projectSteps(project).length, 7);
+  assert.equal(projectSteps(project).length, 8);
   for (const kind of DEFAULT_REQUIRED_DOCUMENTS.filter(kind => kind !== "bdp")) project = attach(project, kind);
   for (const step of projectSteps(project)) project = complete(project, step.id);
   assert.equal(projectProgress(project), 100);
@@ -106,4 +106,73 @@ test("Les pièces vides, trop volumineuses ou de format non pris en charge sont 
   assert.throws(() => validateProjectFile({ name: "rapport.pdf.exe", size: 100 }), /Format/);
   assert.doesNotThrow(() => validateProjectFile({ name: "PLANS.DWG", size: MAX_PROJECT_FILE_SIZE }));
   assert.doesNotThrow(() => validateProjectFile({ name: "Rapport.PDF", size: 1200 }));
+});
+
+test("Remplacer un plan JSON conserve la pièce et les validations, puis incrémente sa révision", () => {
+  let project = createProject(details);
+  for (const kind of DEFAULT_REQUIRED_DOCUMENTS) project = attach(project, kind, kind === "plans" ? "Plan-RDC.JSON" : `${kind}.pdf`);
+  for (const step of projectSteps(project)) project = complete(project, step.id);
+  project = applyProjectAction(project, { type: "edit", details: { ...project, site: "Site actualisé entre-temps" } });
+  const document = project.documents.find(value => value.kind === "plans")!;
+  assert.equal(document.revision, undefined, "Les anciens documents représentent la révision zéro");
+  const now = "2030-01-02T12:00:00.000Z";
+  const result = applyProjectAction(project, { type: "replacePlan", document: { ...document, size: 1500, mime: "application/json", revision: 99 }, expectedDocumentRevision: 0 }, now);
+  const replacement = result.documents.find(value => value.id === document.id)!;
+  assert.equal(result.documents.length, project.documents.length);
+  assert.equal(replacement.name, document.name);
+  assert.equal(replacement.kind, "plans");
+  assert.equal(replacement.revision, 1, "La révision déclarée par le remplaçant ne fait pas autorité");
+  assert.equal(replacement.uploadedAt, now);
+  assert.equal(replacement.size, 1500);
+  assert.deepEqual(result.completedSteps, project.completedSteps);
+  assert.equal(projectProgress(result), 100);
+  assert.equal(result.site, "Site actualisé entre-temps");
+  assert.equal(result.revision, project.revision + 1);
+  assert.equal(result.history.at(-1)?.message, "Plan modifié : Plan-RDC.JSON.");
+  assert.deepEqual(result.documents.filter(value => value.id !== document.id), project.documents.filter(value => value.id !== document.id));
+  assert.equal(document.size, 200, "L’ancien projet n’est pas modifié");
+  assert.throws(() => applyProjectAction(result, { type: "replacePlan", document: replacement, expectedDocumentRevision: 0 }), /autre onglet/);
+  assert.equal(applyProjectAction(result, { type: "replacePlan", document: replacement, expectedDocumentRevision: 1 }).documents.find(value => value.id === document.id)?.revision, 2);
+});
+
+test("Le remplacement refuse les documents absents, PDF, mal catégorisés ou renommés", () => {
+  const project = attach(createProject(details), "plans", "plan.json");
+  const document = project.documents[0];
+  assert.throws(() => applyProjectAction(project, { type: "replacePlan", document: { ...document, id: crypto.randomUUID() }, expectedDocumentRevision: 0 }), /supprimé/);
+  assert.throws(() => applyProjectAction(project, { type: "replacePlan", document: { ...document, name: "autre.json" }, expectedDocumentRevision: 0 }), /conserver le nom/);
+  assert.throws(() => applyProjectAction(project, { type: "replacePlan", document: { ...document, kind: "autre" }, expectedDocumentRevision: 0 }), /catégorie/);
+  for (const [kind, name] of [["plans", "plan.pdf"], ["autre", "plan.json"]] as const) {
+    const other = attach(createProject(details), kind, name);
+    assert.throws(() => applyProjectAction(other, { type: "replacePlan", document: other.documents[0], expectedDocumentRevision: 0 }), /n’est pas un plan JSON/);
+  }
+  assert.equal(project.documents.length, 1);
+  assert.equal(project.documents[0].revision, undefined);
+});
+
+test("Les révisions de documents sont facultatives mais doivent être des entiers positifs ou nuls", () => {
+  const project = attach(createProject(details), "plans", "plan.json");
+  assert.doesNotThrow(() => projectSchema.parse(project));
+  for (const revision of [-1, 0.5, "1", NaN]) {
+    assert.equal(projectSchema.safeParse({ ...project, documents: [{ ...project.documents[0], revision }] }).success, false);
+  }
+  assert.doesNotThrow(() => validateProjectFile({ name: "Maison.JSON", size: 500 }));
+});
+
+
+test("La facturation précède une clôture explicite, y compris pour les anciens dossiers", () => {
+  let project = createProject({ ...details, requiredDocuments: [] });
+  assert.equal(projectSteps(project).length, 9);
+  assert.throws(() => complete(project, "cloture"), /d’abord/);
+  for (const step of projectSteps(project).filter(step => step.id !== "cloture")) project = complete(project, step.id);
+  const legacy = projectSchema.parse(JSON.parse(JSON.stringify(project)));
+  assert.equal(currentProjectStep(legacy)?.id, "cloture");
+  assert.equal(projectProgress(legacy), 89);
+  const closed = complete(legacy, "cloture");
+  assert.equal(currentProjectStep(closed), undefined);
+  assert.equal(projectProgress(closed), 100);
+  assert.equal(closed.completedSteps.at(-1)?.stepId, "cloture");
+  assert.throws(() => complete(closed, "cloture"), /une seule fois/);
+  const reopened = applyProjectAction(closed, { type: "reopen", stepId: "cloture" });
+  assert.equal(currentProjectStep(reopened)?.id, "cloture");
+  assert.equal(reopened.completedSteps.length, 8);
 });

@@ -4,6 +4,8 @@ import { BookOpen, Check, FileDown, FilePlus2, ImagePlus, LoaderCircle, Sparkles
 import { CPS_CHAPTERS, CPS_EXAMPLE_PROMPT, cpsAmount, cpsFilename, cpsNumber, cpsReplySchema, cpsTotals, cpsValue, type Cps, type CpsGenerate, type CpsLogo } from "@/lib/cps";
 import { cpsReferences } from "@/lib/cps-references";
 import { prepareCpsLogo } from "@/lib/cps-logo";
+import { ProjectDocumentActions } from "./ProjectDocumentActions";
+import { projectBrief, useProjectWorkspace, useWorkshopState } from "./ProjectWorkspace";
 
 function CpsPreview({ document, logo }: { document: Cps; logo: CpsLogo | null }) {
   const totals = cpsTotals(document);
@@ -49,10 +51,11 @@ function CpsPreview({ document, logo }: { document: Cps; logo: CpsLogo | null })
 }
 
 export function AtelierCps() {
-  const [prompt, setPrompt] = useState("");
-  const [reference, setReference] = useState<CpsGenerate["reference"]>("auto");
-  const [document, setDocument] = useState<Cps | null>(null);
-  const [logo, setLogo] = useState<CpsLogo | null>(null);
+  const project = useProjectWorkspace()?.project;
+  const [prompt, setPrompt] = useWorkshopState("prompt", () => projectBrief(project));
+  const [reference, setReference] = useWorkshopState<CpsGenerate["reference"]>("reference", "auto");
+  const [document, setDocument] = useWorkshopState<Cps | null>("document", null);
+  const [logo, setLogo] = useWorkshopState<CpsLogo | null>("logo", null);
   const [busy, setBusy] = useState<"generate" | "word" | "logo" | null>(null);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
@@ -95,27 +98,34 @@ export function AtelierCps() {
       else setError(error instanceof Error && error.name === "TimeoutError" ? "La génération prend trop de temps. Réessayez avec une demande plus concise." : error instanceof Error ? error.message : "La génération a échoué.");
     } finally { request.current = null; setBusy(null); }
   }
-  async function download() {
-    if (!document || busy) return;
-    const controller = new AbortController(); request.current = controller;
+  async function createFile(): Promise<File | null> {
+    if (!document || busy) return null;
     setBusy("word"); setError(""); setStatus("");
     try {
       const response = await fetch("/api/cps/word", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ document, logo }),
-        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(45_000)]),
+        signal: AbortSignal.timeout(45_000),
       });
       if (!response.ok) { const body = await response.json().catch(() => ({})); throw new Error(body.error || "L’export Word a échoué."); }
-      const url = URL.createObjectURL(await response.blob());
-      const link = window.document.createElement("a"); link.href = url; link.download = cpsFilename(document);
+      const blob = await response.blob();
+      return new File([blob], cpsFilename(document), { type: blob.type });
+    } catch (error) { throw new Error(error instanceof Error && error.name === "TimeoutError" ? "L’export a pris trop de temps. Réessayez." : error instanceof Error ? error.message : "L’export Word a échoué."); }
+    finally { setBusy(null); }
+  }
+  async function download() {
+    try {
+      const file = await createFile();
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      const link = window.document.createElement("a"); link.href = url; link.download = file.name;
       window.document.body.appendChild(link); link.click(); link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 30_000);
       setStatus("Votre CPS Word est prêt. Vous pouvez modifier les textes et les tableaux dans Word ou LibreOffice.");
-    } catch (error) { setError(error instanceof Error && error.name === "TimeoutError" ? "L’export a pris trop de temps. Réessayez." : error instanceof Error ? error.message : "L’export Word a échoué."); }
-    finally { request.current = null; setBusy(null); }
+    } catch (error) { setError(error instanceof Error ? error.message : "L’export Word a échoué."); }
   }
   function reset() {
     if (busy) return;
-    setDocument(null); setPrompt(""); setError(""); setStatus("");
+    setDocument(null); setPrompt(projectBrief(project)); setError(""); setStatus("");
     promptField.current?.focus();
   }
   return <main className="workspace cps-workspace">
@@ -149,7 +159,7 @@ export function AtelierCps() {
           {error && <p className="report-error cps-feedback" role="alert">{error}</p>}
           {status && <p className="report-status cps-feedback" role="status"><Check size={15}/>{status}</p>}
         </form>
-        <div className="cps-export"><div><FileDown size={21}/><div><h2>Document Word modifiable</h2><p>Couverture, sommaire, articles et tableaux.</p></div></div><button type="button" className="primary-button" disabled={!document || !!busy} onClick={() => void download()}>{busy === "word" ? <LoaderCircle className="animate-spin" size={16}/> : <FileDown size={16}/>}Télécharger le CPS Word</button></div>
+        <div className="cps-export"><div><FileDown size={21}/><div><h2>Document Word modifiable</h2><p>Couverture, sommaire, articles et tableaux.</p></div></div><button type="button" className="primary-button" disabled={!document || !!busy} onClick={() => void download()}>{busy === "word" ? <LoaderCircle className="animate-spin" size={16}/> : <FileDown size={16}/>}Télécharger le CPS Word</button><ProjectDocumentActions kind="cps" format="Word" disabled={!document || !!busy} createFile={createFile}/></div>
         <details className="cps-reference-info"><summary>Les modèles utilisés</summary><p>La structure est adaptée depuis vos CPS. Les anciennes données de marché ne sont pas reprises automatiquement.</p><ul>{cpsReferences.map(item => <li key={item.id}>{item.label}</li>)}</ul></details>
       </div>
       <div className="cps-preview-column">

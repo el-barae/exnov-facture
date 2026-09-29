@@ -1,3 +1,4 @@
+import { protectApi } from "@/lib/server/team-access";
 import { reportExportSchema, reportFilename } from "@/lib/report";
 import { buildReportHtml } from "@/lib/document/report";
 import { renderPdfHtml } from "@/lib/server/pdf";
@@ -7,6 +8,8 @@ import { parseReportRequest, reportError, validateReportImages } from "@/lib/ser
 export const runtime = "nodejs";
 export const maxDuration = 60;
 export async function POST(request: Request) {
+  const denied = await protectApi(request, "export");
+  if (denied) return denied;
   try {
     const { report, images } = await parseReportRequest(request, reportExportSchema);
     validateReportImages(images, report);

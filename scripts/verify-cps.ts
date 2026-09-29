@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
+import { login } from "./helpers/login";
 import PizZip from "pizzip";
 import { cpsGenerateSchema, type CpsGenerate } from "../src/lib/cps";
 import { exampleCps, testLogo } from "../tests/fixtures/cps";
@@ -55,6 +56,7 @@ try {
     const button = Array.from(window.document.querySelectorAll("button")).find(button => button.textContent?.trim() === label && button.checkVisibility());
     if (!button) throw new Error(`Bouton introuvable : ${label}`); button.click();
   }, label);
+  await login(page, origin);
   await page.goto(`${origin}/cps`, { waitUntil: "networkidle0" });
   await page.waitForSelector("#cps-prompt");
   assert.equal(await page.$eval(".cps-export button", element => (element as HTMLButtonElement).disabled), true);

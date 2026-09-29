@@ -9,9 +9,10 @@ export const WORKFLOW_STEPS = [
   { id: "livrables", title: "CPS & plans", description: "Contrôler la cohérence du dossier et préparer les livrables techniques." },
   { id: "validation", title: "Validation du MO", description: "Remettre le dossier au maître d’ouvrage et recueillir sa validation." },
   { id: "facturation", title: "Facturation", description: "Joindre la facture de la mission. Cette étape suit la facturation, pas le règlement." },
+  { id: "cloture", title: "Clôture du projet", description: "Confirmer la fin de la mission après validation de toutes les étapes. Le dossier et ses documents restent consultables." },
 ] as const;
 
-export const stepIdSchema = z.enum(["cadrage", "visite", "diagnostic", "chiffrage", "etudes", "livrables", "validation", "facturation"]);
+export const stepIdSchema = z.enum(["cadrage", "visite", "diagnostic", "chiffrage", "etudes", "livrables", "validation", "facturation", "cloture"]);
 export type StepId = z.infer<typeof stepIdSchema>;
 export const documentKindSchema = z.enum(["devis", "photo", "rapport", "bdp-estimatif", "bdp", "note-calcul", "cps", "plans", "validation-mo", "facture", "autre"]);
 export type DocumentKind = z.infer<typeof documentKindSchema>;
@@ -30,7 +31,7 @@ export const DOCUMENT_KINDS: { id: DocumentKind; label: string; stepId: StepId; 
 ];
 export const DEFAULT_REQUIRED_DOCUMENTS = DOCUMENT_KINDS.filter(kind => kind.requiredByDefault).map(kind => kind.id);
 export const MAX_PROJECT_FILE_SIZE = 20 * 1024 * 1024;
-export const PROJECT_FILE_ACCEPT = ".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.webp,.dwg,.dxf,.zip";
+export const PROJECT_FILE_ACCEPT = ".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.webp,.dwg,.dxf,.json,.zip";
 
 export const projectDetailsSchema = z.object({
   name: z.string().trim().min(1, "Renseignez le nom du projet.").max(160),
@@ -46,6 +47,7 @@ export const projectDocumentSchema = z.object({
   id: z.string().uuid(), kind: documentKindSchema,
   name: z.string().min(1).max(255), size: z.number().int().positive().max(MAX_PROJECT_FILE_SIZE),
   mime: z.string().max(200), uploadedAt: z.string().datetime(),
+  revision: z.number().int().nonnegative().optional(),
 });
 export type ProjectDocument = z.infer<typeof projectDocumentSchema>;
 const projectRecordSchema = projectDetailsSchema.extend({
@@ -98,7 +100,7 @@ export function validateProjectFile(file: Pick<File, "name" | "size">) {
   if (file.size === 0) throw new Error("Le fichier est vide. Choisissez un document contenant des données.");
   if (file.size > MAX_PROJECT_FILE_SIZE) throw new Error("Ce fichier dépasse la limite de 20 Mo.");
   if (!PROJECT_FILE_ACCEPT.split(",").some(extension => file.name.toLowerCase().endsWith(extension))) {
-    throw new Error("Format non accepté. Ajoutez un PDF, un document Office, une image, un fichier DWG/DXF ou ZIP.");
+    throw new Error("Format non accepté. Ajoutez un PDF, un document Office, une image, un fichier DWG/DXF, JSON ou ZIP.");
   }
   if (file.name.length > 255) throw new Error("Le nom du fichier est trop long (255 caractères maximum).");
 }
@@ -106,6 +108,7 @@ export function validateProjectFile(file: Pick<File, "name" | "size">) {
 export type ProjectAction =
   | { type: "complete"; stepId: StepId }
   | { type: "attach"; document: ProjectDocument }
+  | { type: "replacePlan"; document: ProjectDocument; expectedDocumentRevision: number }
   | { type: "removeDocument"; documentId: string }
   | { type: "reopen"; stepId: StepId }
   | { type: "edit"; details: ProjectDetails };
@@ -127,6 +130,22 @@ export function applyProjectAction(project: CivilProject, action: ProjectAction,
     if (project.documents.some(existing => existing.id === doc.id)) throw new Error("Ce document existe déjà.");
     next.documents = [...project.documents, doc];
     message = `Document ajouté : ${documentLabel(doc.kind)} — ${doc.name}.`;
+  } else if (action.type === "replacePlan") {
+    const replacement = projectDocumentSchema.parse(action.document);
+    const existing = project.documents.find(document => document.id === replacement.id);
+    if (!existing) throw new Error("Ce plan a été supprimé du projet. Votre dessin reste disponible dans l’atelier.");
+    if (existing.kind !== "plans" || !existing.name.toLowerCase().endsWith(".json")) {
+      throw new Error("Ce document n’est pas un plan JSON modifiable.");
+    }
+    if (replacement.kind !== existing.kind || replacement.name !== existing.name) {
+      throw new Error("Le remplacement doit conserver le nom et la catégorie du plan.");
+    }
+    if ((existing.revision ?? 0) !== action.expectedDocumentRevision) {
+      throw new Error("Ce plan a été modifié dans un autre onglet. Vos modifications n’ont pas été enregistrées dans le projet. Exportez votre version en JSON avant de rouvrir le document du projet.");
+    }
+    const document = { ...replacement, uploadedAt: now, revision: (existing.revision ?? 0) + 1 };
+    next.documents = project.documents.map(value => value.id === existing.id ? document : value);
+    message = `Plan modifié : ${document.name}.`;
   } else if (action.type === "removeDocument") {
     const doc = project.documents.find(value => value.id === action.documentId);
     if (!doc) throw new Error("Ce document n’existe plus.");

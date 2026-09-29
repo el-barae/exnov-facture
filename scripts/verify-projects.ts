@@ -4,6 +4,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
+import { login } from "./helpers/login";
+import { showProjectStep } from "./helpers/project-workflow";
 
 const origin = process.env.TEST_BASE_URL || "http://localhost:3000";
 const out = path.join(process.cwd(), "test-results", "projets");
@@ -24,7 +26,7 @@ try {
     await page.evaluate(label => Array.from(document.querySelectorAll("button")).find(button => button.textContent?.trim() === label && button.checkVisibility() && !button.disabled)!.click(), label);
   };
   const idle = () => page.waitForSelector(".projects-page-heading button:not(:disabled)");
-  const waitStep = (id: string) => page.waitForSelector(`[data-step="${id}"][data-status="current"]`);
+  const waitStep = async (id: string) => { await showProjectStep(page, id); await page.waitForSelector(`[data-step="${id}"][data-status="current"]`); };
   const upload = async (kind: string, inDialog = true, filename = `${kind}.docx`) => {
     const count = await page.$$eval(".project-document-list>li", values => values.length);
     const selector = `${inDialog ? "dialog[open] " : ".project-document-upload "}input[data-upload-kind="${kind}"]`;
@@ -44,7 +46,7 @@ try {
     await page.waitForSelector("dialog[open]", { hidden: true });
     await waitStep("cadrage");
   };
-  await page.goto(`${origin}/projets`, { waitUntil: "networkidle0" });
+  await login(page, origin);
   await idle();
   assert.ok(await page.$eval(".project-empty-state", element => element.textContent?.includes("premier projet")));
   await create("Aménagement du souk communal", true);
@@ -55,9 +57,10 @@ try {
     ["facturation", "Générer une facture", "facture"],
     ["diagnostic", "Générer un rapport", "rapport"],
     ["livrables", "Générer un CPS", "cps"],
+    ["livrables", "Créer un plan 2D", "plans"],
     ["cadrage", "Générer un devis", "devis"],
   ]) {
-    await page.click(`[data-step="${step}"]`);
+    await showProjectStep(page, step); await page.click(`[data-step="${step}"]`);
     await click(label);
     await page.waitForSelector("dialog[open]", { hidden: true });
     if (target === "devis" || target === "facture") {
@@ -66,11 +69,12 @@ try {
         return field?.checkVisibility() && field.value === type;
       }, {}, target);
       const value = await page.$eval('[name="projet"]', element => (element as HTMLTextAreaElement).value);
-      if (!value) await page.type('[name="projet"]', "Saisie conservée via les raccourcis");
-      else assert.equal(value, "Saisie conservée via les raccourcis");
+      assert.equal(value, "Aménagement du souk communal");
+      assert.equal(await page.$eval('[name="destinataire"]', element => (element as HTMLTextAreaElement).value), "Commune de Tanger");
+      assert.equal(await page.$eval('[name="reference"]', element => (element as HTMLInputElement).value), "GC-2026-001");
     } else {
-      await page.waitForFunction(target => document.querySelector(target === "cps" ? "#cps-prompt" : "#report-prompt")?.checkVisibility(), {}, target);
-      assert.equal(new URL(page.url()).pathname, target === "cps" ? "/cps" : "/");
+      await page.waitForFunction(target => document.querySelector(target === "plans" ? ".plans-workspace" : target === "cps" ? "#cps-prompt" : "#report-prompt")?.checkVisibility(), {}, target);
+      assert.equal(new URL(page.url()).pathname, target === "plans" ? "/plans" : target === "cps" ? "/cps" : "/");
     }
     await click("Projets");
     await waitStep("cadrage");
@@ -79,6 +83,7 @@ try {
   }
 
   // Impossible de sauter une étape ; les futures pièces peuvent néanmoins être préparées.
+  await showProjectStep(page, "livrables");
   await page.click('[data-step="livrables"]');
   assert.equal(await page.$eval('dialog[open]', element => element.textContent?.includes("Validez d’abord")), true);
   assert.equal(await page.$$eval('dialog[open] button', buttons => buttons.some(button => button.textContent?.trim() === "Valider l’étape")), false);
@@ -87,6 +92,7 @@ try {
   await waitStep("cadrage");
 
   // L’étape actuelle demande seulement les documents qui manquent.
+  await showProjectStep(page, "cadrage");
   await page.click('[data-step="cadrage"]');
   assert.ok(await page.$eval('dialog[open]', element => element.textContent?.includes("Devis accepté")));
   assert.equal(await page.$$eval('dialog[open] button', buttons => buttons.find(button => button.textContent?.trim() === "Valider l’étape")?.disabled), true);
@@ -115,6 +121,7 @@ try {
   await upload("devis");
   await click("Valider l’étape");
   await waitStep("visite");
+  await showProjectStep(page, "visite");
   await page.click('[data-step="visite"]');
   await waitStep("diagnostic");
   assert.equal(await page.$$eval('[data-status="completed"]', values => values.length), 2);
@@ -123,10 +130,12 @@ try {
   // Navigation de service sans perte de saisie et URL rechargeable.
   await click("Factures / Devis");
   await page.waitForFunction(() => !(document.querySelector("#invoice-form fieldset") as HTMLFieldSetElement)?.disabled);
+  await page.click('[name="destinataire"]'); await page.keyboard.down("Control"); await page.keyboard.press("a"); await page.keyboard.up("Control"); await page.keyboard.press("Backspace");
   await page.type('[name="destinataire"]', "Client à conserver");
   await click("Projets");
   assert.equal(new URL(page.url()).pathname, "/projets");
   await click("Rapports IA");
+  await page.click("#report-prompt"); await page.keyboard.down("Control"); await page.keyboard.press("a"); await page.keyboard.up("Control"); await page.keyboard.press("Backspace");
   await page.type("#report-prompt", "Notes à conserver");
   await click("Projets");
   await click("Factures / Devis");
@@ -169,6 +178,7 @@ try {
   await secondTab.goto(`${origin}/projets`, { waitUntil: "networkidle0" });
   await secondTab.waitForSelector('[data-step="diagnostic"][data-status="current"]');
   await page.bringToFront();
+  await showProjectStep(page, "diagnostic");
   await page.click('[data-step="diagnostic"]');
   await upload("rapport");
   await click("Valider l’étape");
@@ -185,7 +195,7 @@ try {
 
   for (const [step, kind] of [["chiffrage", "bdp"], ["etudes", "note-calcul"], ["livrables", "cps"], ["validation", "validation-mo"], ["facturation", "facture"]]) {
     await waitStep(step);
-    await page.click(`[data-step="${step}"]`);
+    await showProjectStep(page, step); await page.click(`[data-step="${step}"]`);
     if (step === "livrables") {
       assert.equal(await page.$$('dialog[open] input[data-upload-kind="plans"]').then(values => values.length), 0, "Les plans déjà fournis ne sont pas redemandés");
       assert.ok(await page.$eval('dialog[open]', element => element.textContent?.includes("plans.docx")));
@@ -194,8 +204,14 @@ try {
     await click("Valider l’étape");
     await idle();
   }
+  await waitStep("cloture");
+  assert.equal(await page.$(".project-completed-banner"), null, "Facturer ne clôture pas le projet");
+  await page.click('[data-step="cloture"]');
+  await page.waitForSelector("dialog[open]");
+  await page.click('dialog[open] .project-dialog-actions .primary-button');
   await page.waitForSelector(".project-completed-banner");
   assert.equal(await page.$eval('[role="progressbar"]', element => element.getAttribute("aria-valuenow")), "100");
+  await showProjectStep(page, "diagnostic");
   await page.click('[data-step="diagnostic"]');
   await click("Reprendre à cette étape");
   await click("Confirmer la reprise");
@@ -205,6 +221,7 @@ try {
   // Un autre projet garde sa propre progression et ses propres documents.
   await create("Diagnostic d’un ouvrage existant", false);
   assert.equal(await page.$$eval(".project-document-list>li", values => values.length), 0);
+  await showProjectStep(page, "chiffrage");
   assert.equal(await page.$eval('[data-step="chiffrage"]', element => element.getAttribute("data-status")), "skipped");
   await page.type('input[aria-label="Rechercher un projet"]', "souk");
   assert.equal(await page.$$eval(".project-nav-item", values => values.length), 1);
@@ -217,6 +234,7 @@ try {
     await page.setViewport({ width, height: 844 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Pas de débordement à ${width}px`);
     await page.screenshot({ path: path.join(out, `projets-mobile-${width}.png`), fullPage: true });
+    await showProjectStep(page, "livrables");
     await page.click('[data-step="livrables"]');
     assert.ok(await page.$eval('dialog[open]', element => element.scrollWidth <= element.clientWidth), "La fenêtre tient sur mobile");
     await page.keyboard.press("Escape");
