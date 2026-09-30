@@ -184,6 +184,9 @@ try {
   await page.screenshot({ path: path.join(out, "plans-dark.png"), fullPage: true });
   for (const width of [390, 320]) {
     await page.setViewport({ width, height: 844, isMobile: true, hasTouch: true });
+    // L’émulation tactile recharge la page ; attendre la session puis l’atelier.
+    await page.waitForSelector('[data-testid="cad-canvas"]', { visible: true });
+    await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Pas de débordement à ${width}px`);
     assert.ok((await (await page.$('[data-testid="cad-canvas"]'))!.boundingBox())!.height >= 300);
     await page.screenshot({ path: path.join(out, `plans-mobile-${width}.png`), fullPage: true });

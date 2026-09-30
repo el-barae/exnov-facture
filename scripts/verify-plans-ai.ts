@@ -69,6 +69,10 @@ try {
     await page.waitForFunction(label => [...document.querySelectorAll("button")].some(button => button.textContent?.trim() === label && button.checkVisibility() && !button.disabled), {}, label);
     await page.evaluate(label => [...document.querySelectorAll("button")].find(button => button.textContent?.trim() === label && button.checkVisibility() && !button.disabled)!.click(), label);
   };
+  const openAssistant = async () => {
+    if (!(await page.$("#cad-ai-prompt"))) await click("Assistant IA");
+    await page.waitForSelector("#cad-ai-prompt", { visible: true });
+  };
   const plan = (): Promise<CadPlan> => page.evaluate(() => JSON.parse(localStorage.getItem(`exnov.plans.v1.document.${localStorage.getItem("exnov.plans.v1.active")}`)!));
   const count = (expected: number) => page.waitForFunction(expected => {
     const current = JSON.parse(localStorage.getItem(`exnov.plans.v1.document.${localStorage.getItem("exnov.plans.v1.active")}`)!);
@@ -224,12 +228,15 @@ try {
   assert.notEqual(newPlan.id, initial.id);
   await switching.reply({ message: "Réponse de l’ancien document.", plan: extendWall(switchingRequest.plan) });
   await page.waitForNetworkIdle({ idleTime: 200 });
+  // Each document has its own workspace; changing it closes transient panels.
+  await openAssistant();
   await idle();
   await noPreview();
   assert.deepEqual(await plan(), newPlan);
   assert.ok(!(await page.evaluate(() => document.querySelector('[role="log"]')?.textContent || "")).includes("ancien document"));
   await page.select('select[aria-label="Mes plans"]', initial.id);
   await count(4);
+  await openAssistant();
   assert.deepEqual((await plan()).entities, current.entities);
 
   // The browser independently rejects responses that modify protected layers.

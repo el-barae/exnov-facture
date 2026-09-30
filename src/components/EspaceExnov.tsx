@@ -1,12 +1,10 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { APP_NAME } from "@/config/app";
-import { WorkspaceLoading } from "./WorkspaceLoading";
-import { BookOpen, FileText, FolderKanban, LogOut, PencilRuler, Sparkles, Users } from "lucide-react";
-import { canManageProjects, canUseAi, TEAM_ROLE_LABELS, type TeamUser } from "@/lib/team";
+import { BookOpen, FileText, FolderKanban, LogOut, PencilRuler, Sparkles } from "lucide-react";
 import { TeamProvider, useTeam } from "./TeamProvider";
-import { EspaceEquipe } from "./EspaceEquipe";
+import { WorkspaceLoading } from "./WorkspaceLoading";
+import { canManageProjects, canUseAi, type TeamUser } from "@/lib/team";
 import { AtelierFacture, type AtelierFactureHandle } from "./AtelierFacture";
 import { AtelierRapport } from "./AtelierRapport";
 import { EspaceProjets, type ProjectGenerator } from "./EspaceProjets";
@@ -21,10 +19,10 @@ import type { LoadedProjectPlan } from "@/lib/cad/project";
 import type { CadPlan } from "@/lib/cad/types";
 import type { CivilProject } from "@/lib/projects";
 
-type Service = "factures" | "rapports" | "projets" | "cps" | "plans" | "equipe";
+type Service = "factures" | "rapports" | "projets" | "cps" | "plans";
 
 function allowedService(service: Service, user: TeamUser | null): Service {
-  if ((service === "factures" || service === "equipe") && !canManageProjects(user)) return "projets";
+  if (service === "factures" && !canManageProjects(user)) return "projets";
   if ((service === "rapports" || service === "cps") && !canUseAi(user)) return "projets";
   return service;
 }
@@ -34,7 +32,7 @@ function currentService(): Service {
   if (window.location.pathname === "/cps") return "cps";
   if (window.location.pathname === "/projets") return "projets";
   const requested = new URLSearchParams(window.location.search).get("service");
-  return requested === "rapports" || requested === "factures" || requested === "equipe" ? requested : "projets";
+  return requested === "rapports" || requested === "factures" ? requested : "projets";
 }
 
 export function EspaceExnov() {
@@ -57,7 +55,7 @@ function TeamGate() {
 }
 
 function EspaceConnecte({ initialService }: { initialService: Service }) {
-  const { user, mode, logout } = useTeam();
+  const { user, logout } = useTeam();
   const email = user!.email;
   const manageProjects = canManageProjects(user);
   const useAi = canUseAi(user);
@@ -65,7 +63,6 @@ function EspaceConnecte({ initialService }: { initialService: Service }) {
   const [loggingOut, setLoggingOut] = useState(false);
   const invoiceEditor = useRef<AtelierFactureHandle>(null);
   const [contexts, setContexts] = useState<Partial<Record<Service, CivilProject>>>({});
-  const [invoiceType, setInvoiceType] = useState<"devis" | "facture">("facture");
   const [projectToOpen, setProjectToOpen] = useState<{ id: string; request: number } | null>(null);
   const [planDocument, setPlanDocument] = useState<LoadedProjectPlan>();
   const [planSession, setPlanSession] = useState(0);
@@ -145,7 +142,7 @@ function EspaceConnecte({ initialService }: { initialService: Service }) {
   }
   useEffect(() => {
     const restore = () => {
-      const next = allowedService(currentService(), user);
+      const next = currentService();
       if (next === "rapports") setReportsVisited(true);
       if (next === "projets") setProjectsVisited(true);
       if (next === "cps") setCpsVisited(true);
@@ -166,7 +163,7 @@ function EspaceConnecte({ initialService }: { initialService: Service }) {
       } else if (next === "plans") { setPlanDocument(undefined); setContexts(previous => ({ ...previous, plans: undefined })); setPlanOpening(false); setPlanOpenError(""); }
     };
     // Restaurer le service depuis l’URL après hydratation et lors des retours navigateur.
-    restore();
+    void Promise.resolve().then(restore);
     window.addEventListener("popstate", restore);
     return () => window.removeEventListener("popstate", restore);
     // Navigation is restored from the URL; draft maps are stable for this session.
@@ -186,25 +183,25 @@ function EspaceConnecte({ initialService }: { initialService: Service }) {
     if (`${window.location.pathname}${window.location.search}` !== url) window.history.pushState(null, "", url);
   }
   function openProjectGenerator(kind: ProjectGenerator, project: CivilProject) {
-    if ((kind === "facture" || kind === "devis") && !manageProjects) return;
+    if ((kind === "devis" || kind === "facture") && !manageProjects) return;
     if ((kind === "rapport" || kind === "cps") && !useAi) return;
-    const target: Service = kind === "devis" || kind === "facture" ? "factures" : kind === "rapport" ? "rapports" : kind;
-    setContexts(previous => ({ ...previous, [target]: project }));
-    if (kind === "plans") { setPlanDocument(undefined); setPlanOpenError(""); }
     if (kind === "devis" || kind === "facture") {
-      setInvoiceType(kind);
-      if (contexts.factures?.id === project.id) invoiceEditor.current?.selectDocumentType(kind);
+      invoiceEditor.current?.selectDocumentType(kind);
       select("factures");
-    } else select(kind === "rapport" ? "rapports" : kind === "plans" ? "plans" : "cps");
-    if (kind === "plans") window.history.replaceState(null, "", "/plans");
+    } else if (kind === "plans") {
+      setContexts(previous => ({ ...previous, plans: project }));
+      setPlanDocument(undefined); setPlanOpenError("");
+      select("plans");
+      window.history.replaceState(null, "", "/plans");
+    } else select(kind === "rapport" ? "rapports" : "cps");
     window.scrollTo({ top: 0, behavior: "instant" });
   }
   const plansDraft = draftFor("plans");
   return <>
     <header className="app-header">
       <div className="header-inner">
-        <button type="button" className="brand-lockup" aria-label={`${APP_NAME} — Accueil`} onClick={() => select("projets")}>
-          <Image className="header-logo" src="/logo.png" alt={APP_NAME} width={229} height={172} priority unoptimized/>
+        <button type="button" className="brand-lockup" aria-label="EXNOV — Accueil" onClick={() => select("projets")}>
+          <Image className="header-logo" src="/logo.png" alt="EXNOV" width={229} height={172} priority unoptimized/>
         </button>
         <div className="header-divider"/>
         <nav className="service-switch" aria-label="Services EXNOV">
@@ -213,9 +210,8 @@ function EspaceConnecte({ initialService }: { initialService: Service }) {
           {useAi && <button type="button" aria-pressed={service === "rapports"} onClick={() => select("rapports")}><Sparkles size={15}/><span>Rapports IA</span></button>}
           {useAi && <button type="button" aria-pressed={service === "cps"} onClick={() => select("cps")}><BookOpen size={15}/><span>CPS IA</span></button>}
           <button type="button" aria-pressed={service === "plans"} onClick={() => select("plans")}><PencilRuler size={15}/><span>Plans 2D</span></button>
-          {mode === "team" && manageProjects && <button type="button" aria-pressed={service === "equipe"} onClick={() => select("equipe")}><Users size={15}/><span>Équipe</span></button>}
         </nav>
-        <div className="header-account"><span className="company-location">Tanger, Maroc</span><ThemeToggle/><span className="avatar" title={`${user!.name} · ${TEAM_ROLE_LABELS[user!.role]}`} aria-label={`Connecté : ${email} — ${TEAM_ROLE_LABELS[user!.role]}`}>{email.slice(0, 2).toUpperCase()}</span><button type="button" className="icon-button logout-button" aria-label="Se déconnecter" title="Se déconnecter" disabled={loggingOut} onClick={async () => {
+        <div className="header-account"><span className="company-location">Tanger, Maroc</span><ThemeToggle/><span className="avatar" title={email} aria-label={`Connecté : ${email}`}>{email.slice(0, 2).toUpperCase()}</span><button type="button" className="icon-button logout-button" aria-label="Se déconnecter" title="Se déconnecter" disabled={loggingOut} onClick={async () => {
           setLoggingOut(true); setLogoutError("");
           try { await logout(); window.history.replaceState(null, "", "/"); }
           catch (reason) { setLogoutError(reason instanceof Error ? reason.message : "La déconnexion a échoué."); setLoggingOut(false); }
@@ -223,11 +219,10 @@ function EspaceConnecte({ initialService }: { initialService: Service }) {
       </div>
     </header>
     {logoutError && <p className="project-error team-session-error" role="alert">{logoutError}</p>}
-    {mode === "team" && manageProjects && service === "equipe" && <EspaceEquipe/>}
-    {manageProjects && <div hidden={service !== "factures"}><ProjectWorkspace key={contexts.factures?.id ?? "standalone"} project={contexts.factures} draft={draftFor("factures")} onOpenProject={openProject} onLeaveProject={() => setContexts(previous => ({ ...previous, factures: undefined }))}><AtelierFacture ref={invoiceEditor} initialType={invoiceType}/></ProjectWorkspace></div>}
-    {useAi && reportsVisited && <div hidden={service !== "rapports"}><ProjectWorkspace key={contexts.rapports?.id ?? "standalone"} project={contexts.rapports} draft={draftFor("rapports")} onOpenProject={openProject} onLeaveProject={() => setContexts(previous => ({ ...previous, rapports: undefined }))}><AtelierRapport/></ProjectWorkspace></div>}
+    {manageProjects && <div hidden={service !== "factures"}><AtelierFacture ref={invoiceEditor}/></div>}
+    {useAi && reportsVisited && <div hidden={service !== "rapports"}><AtelierRapport/></div>}
     {(projectsVisited || service === "projets") && <div hidden={service !== "projets"}><EspaceProjets onOpenPlan={openPlanDocument} onOpenGenerator={openProjectGenerator} projectToOpen={projectToOpen}/></div>}
     {plansVisited && <div hidden={service !== "plans"}>{planOpening ? <main className="plans-workspace" role="status">Ouverture du plan du projet…</main> : planOpenError ? <main className="plans-workspace"><p className="plans-error" role="alert">{planOpenError}</p><button type="button" className="secondary-button" onClick={() => select("projets")}>Retour aux projets</button></main> : <ProjectWorkspace key={`${plansKey}:${planSession}`} project={contexts.plans} draft={plansDraft} planDocument={planDocument} onOpenPlanDraft={openPlanDraft} onPlanSaved={document => planSaved(document, plansKey, plansDraft, planSession)} onOpenProject={openProject} onLeaveProject={() => { setContexts(previous => ({ ...previous, plans: undefined })); setPlanDocument(undefined); window.history.replaceState(null, "", "/plans"); }}><AtelierPlan/></ProjectWorkspace>}</div>}
-    {useAi && cpsVisited && <div hidden={service !== "cps"}><ProjectWorkspace key={contexts.cps?.id ?? "standalone"} project={contexts.cps} draft={draftFor("cps")} onOpenProject={openProject} onLeaveProject={() => setContexts(previous => ({ ...previous, cps: undefined }))}><AtelierCps/></ProjectWorkspace></div>}
+    {useAi && cpsVisited && <div hidden={service !== "cps"}><AtelierCps/></div>}
   </>;
 }
